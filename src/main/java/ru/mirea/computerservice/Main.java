@@ -17,6 +17,7 @@ import ru.mirea.computerservice.util.ExcelExporter;
 import ru.mirea.computerservice.util.InputHelper;
 
 import java.math.BigDecimal;
+import java.nio.charset.Charset;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +25,21 @@ import java.util.Scanner;
 
 public class Main {
 
-    private static final Scanner scanner = new Scanner(System.in);
+    // Умная инициализация сканера: читает напрямую из Unicode-консоли Windows
+    private static final Scanner scanner = createScanner();
+
+    private static Scanner createScanner() {
+        if (System.console() != null) {
+            return new Scanner(System.console().reader());
+        }
+        // Если запущено внутри IDE без консоли
+        try {
+            String nativeEncoding = System.getProperty("native.encoding", Charset.defaultCharset().name());
+            return new Scanner(System.in, nativeEncoding);
+        } catch (Exception e) {
+            return new Scanner(System.in);
+        }
+    }
 
     private static final ClientRepository clientRepository = new ClientRepositoryJdbc();
     private static final ClientService clientService = new ClientService(clientRepository);
