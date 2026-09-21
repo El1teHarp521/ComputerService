@@ -2,10 +2,14 @@ package ru.mirea.computerservice.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import java.util.Set;
 
 public class RepairRequest {
+
+    private static final DateTimeFormatter DATE_FORMATTER = 
+            DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     private static final Set<RequestStatus> FINAL_STATUSES =
             Set.of(RequestStatus.DONE, RequestStatus.CANCELLED);
@@ -133,8 +137,17 @@ public class RepairRequest {
 
     @Override
     public String toString() {
-        return String.format("[%d] %-12s | клиент: %-22s | статус: %-20s | приоритет: %-9s | стоимость: %s",
-                id, deviceType, clientName == null ? String.valueOf(clientId) : clientName,
-                status.getDisplayName(), priority.getDisplayName(), cost);
+        String dateStr = (createdAt != null) ? createdAt.format(DATE_FORMATTER) : "-";
+        String client = (clientName != null) ? clientName : ("ID: " + clientId);
+
+        return String.format("[%d] от %s | %-10s | Клиент: %-20s | Поломка: %-25s | Статус: %-15s | Приоритет: %-8s | Цена: %s руб.",
+                id,
+                dateStr,
+                deviceType,
+                client,
+                problemDescription,
+                status.getDisplayName(),
+                priority.getDisplayName(),
+                cost);
     }
 }
