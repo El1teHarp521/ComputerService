@@ -1,0 +1,9 @@
+target/
+*.class
+.vscode/
+.idea/
+*.iml
+.DS_Store
+*.log
+export.xlsx
+repair_requests_report.xlsx
