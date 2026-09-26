@@ -1,24 +1,25 @@
-package ru.mirea.computerservice.repository;
+package ru.mirea.computerservice.repository; // Пакет, в котором находится интерфейс
 
-import ru.mirea.computerservice.model.Client;
+import ru.mirea.computerservice.model.Client; // Импорт модели Client
 
-import java.util.List;
-import java.util.Optional;
+import java.util.List; // Импорт List для возврата списков
+import java.util.Optional; // Импорт Optional для возврата "может быть null"
 
-public interface ClientRepository {
-    Client save(Client client);
+public interface ClientRepository { // Объявление интерфейса ClientRepository
 
-    Optional<Client> findById(int id);
+    Client save(Client client); // Сохранить нового клиента, вернуть его с присвоенным id
 
-    List<Client> findAll();
+    Optional<Client> findById(int id); // Найти клиента по id, вернуть Optional (может быть пусто)
 
-    void update(Client client);
+    List<Client> findAll(); // Получить список всех клиентов
 
-    void delete(int id);
+    void update(Client client); // Обновить данные существующего клиента
 
-    boolean existsByPhone(String phone);
+    void delete(int id); // Удалить клиента по id
 
-    List<Client> searchByName(String namePart);
+    boolean existsByPhone(String phone); // Проверить, есть ли клиент с таким телефоном
 
-    boolean hasActiveRequests(int clientId);
+    List<Client> searchByName(String namePart); // Найти клиентов по части имени
+
+    boolean hasActiveRequests(int clientId); // Проверить, есть ли у клиента активные заявки
 }

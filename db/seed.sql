@@ -1,10 +1,12 @@
+-- Вставляем тестовых клиентов
 INSERT INTO clients (full_name, phone, email) VALUES
 ('Иванов Иван Иванович', '+79001112233', 'ivanov@mail.ru'),
 ('Петрова Мария Сергеевна', '+79002223344', 'petrova@mail.ru'),
 ('Сидоров Алексей Викторович', '+79003334455', 'sidorov@mail.ru'),
 ('Кузнецова Ольга Дмитриевна', '+79004445566', 'kuznecova@mail.ru'),
-('Смирнов Дмитрий Павлович', '+79005556677', NULL);
+('Смирнов Дмитрий Павлович', '+79005556677', NULL); -- У этого клиента нет email
 
+-- Вставляем тестовые заявки на ремонт
 INSERT INTO repair_requests (client_id, device_type, problem_description, status, priority, cost, created_at) VALUES
 (1, 'Ноутбук', 'Не включается, подозрение на блок питания', 'NEW', 'HIGH', 0, now() - interval '10 days'),
 (1, 'ПК', 'Синий экран при загрузке Windows', 'IN_PROGRESS', 'NORMAL', 1500.00, now() - interval '9 days'),

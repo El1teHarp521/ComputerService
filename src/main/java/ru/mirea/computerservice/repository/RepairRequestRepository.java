@@ -1,22 +1,23 @@
-package ru.mirea.computerservice.repository;
+package ru.mirea.computerservice.repository; // Пакет, в котором находится интерфейс
 
-import ru.mirea.computerservice.model.RepairRequest;
+import ru.mirea.computerservice.model.RepairRequest; // Импорт модели RepairRequest
 
-import java.util.List;
-import java.util.Optional;
+import java.util.List; // Импорт List для возврата списков
+import java.util.Optional; // Импорт Optional для возврата "может быть null"
 
-public interface RepairRequestRepository {
-    RepairRequest save(RepairRequest request);
+public interface RepairRequestRepository { // Объявление интерфейса RepairRequestRepository
 
-    Optional<RepairRequest> findById(int id);
+    RepairRequest save(RepairRequest request); // Сохранить новую заявку, вернуть её с присвоенным id
 
-    List<RepairRequest> findAll();
+    Optional<RepairRequest> findById(int id); // Найти заявку по id, вернуть Optional (может быть пусто)
 
-    void update(RepairRequest request);
+    List<RepairRequest> findAll(); // Получить список всех заявок
 
-    void delete(int id);
+    void update(RepairRequest request); // Обновить данные существующей заявки
 
-    List<RepairRequest> searchByDescription(String keyword);
+    void delete(int id); // Удалить заявку по id
 
-    List<RepairRequest> searchByClientName(String namePart);
+    List<RepairRequest> searchByDescription(String keyword); // Найти заявки по ключевому слову в описании
+
+    List<RepairRequest> searchByClientName(String namePart); // Найти заявки по части имени клиента
 }
