@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<!--
+    Главное окно приложения. Связано с MainController через атрибут fx:controller.
+    BorderPane делит окно на зоны: top (меню + панель инструментов), center (вкладки с таблицами).
+-->
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="ru.mirea.computerservice.fx.controller.MainController"
+            stylesheets="@app.css" styleClass="root-pane">
+
+    <top>
+        <VBox>
+            <MenuBar>
+                <Menu text="Файл">
+                    <MenuItem text="Экспорт заявок в Excel..." onAction="#onExport"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Выход" onAction="#onExit"/>
+                </Menu>
+                <Menu text="Справка">
+                    <MenuItem text="О программе" onAction="#onAbout"/>
+                </Menu>
+            </MenuBar>
+
+            <!-- Панель поиска и фильтров — доступна с любой вкладки заявок -->
+            <ToolBar styleClass="toolbar">
+                <TextField fx:id="searchField" promptText="Поиск по описанию или клиенту..." prefWidth="240"/>
+                <Button text="Найти" onAction="#onSearch"/>
+                <Separator orientation="VERTICAL"/>
+                <Label text="Статус:"/>
+                <ComboBox fx:id="statusFilterCombo" prefWidth="170"/>
+                <Label text="Приоритет:"/>
+                <ComboBox fx:id="priorityFilterCombo" prefWidth="120"/>
+                <Button text="Сбросить" onAction="#onResetFilter"/>
+                <Separator orientation="VERTICAL"/>
+                <Button text="Сорт. по дате" onAction="#onSortByDate"/>
+                <Button text="Сорт. по стоимости" onAction="#onSortByCost"/>
+                <Separator orientation="VERTICAL"/>
+                <Button text="Обновить" onAction="#onRefresh"/>
+                <Button text="Статистика" onAction="#onStatistics"/>
+            </ToolBar>
+        </VBox>
+    </top>
+
+    <center>
+        <!-- Две вкладки: основная сущность (Заявки) и сущность-пользователь (Клиенты) -->
+        <TabPane tabClosingPolicy="UNAVAILABLE">
+
+            <Tab text="Заявки">
+                <BorderPane>
+                    <center>
+                        <TableView fx:id="requestsTable">
+                            <columns>
+                                <TableColumn fx:id="colId" text="ID" prefWidth="40"/>
+                                <TableColumn fx:id="colClient" text="Клиент" prefWidth="170"/>
+                                <TableColumn fx:id="colDevice" text="Устройство" prefWidth="100"/>
+                                <TableColumn fx:id="colDescription" text="Описание" prefWidth="230"/>
+                                <TableColumn fx:id="colStatus" text="Статус" prefWidth="150"/>
+                                <TableColumn fx:id="colPriority" text="Приоритет" prefWidth="90"/>
+                                <TableColumn fx:id="colCost" text="Стоимость" prefWidth="90"/>
+                                <TableColumn fx:id="colCreatedAt" text="Создана" prefWidth="110"/>
+                            </columns>
+                        </TableView>
+                    </center>
+                    <bottom>
+                        <HBox styleClass="actions-bar" spacing="10" alignment="CENTER_LEFT">
+                            <padding>
+                                <Insets top="8" bottom="8" left="8" right="8"/>
+                            </padding>
+                            <Button text="Добавить" onAction="#onAddRequest" styleClass="btn-primary"/>
+                            <Button text="Изменить" onAction="#onEditRequest"/>
+                            <Button text="Удалить" onAction="#onDeleteRequest" styleClass="btn-danger"/>
+                            <Label fx:id="requestsStatusLabel"/>
+                        </HBox>
+                    </bottom>
+                </BorderPane>
+            </Tab>
+
+            <Tab text="Клиенты">
+                <BorderPane>
+                    <center>
+                        <TableView fx:id="clientsTable">
+                            <columns>
+                                <TableColumn fx:id="colClientId" text="ID" prefWidth="40"/>
+                                <TableColumn fx:id="colClientName" text="ФИО" prefWidth="220"/>
+                                <TableColumn fx:id="colClientPhone" text="Телефон" prefWidth="150"/>
+                                <TableColumn fx:id="colClientEmail" text="Email" prefWidth="200"/>
+                            </columns>
+                        </TableView>
+                    </center>
+                    <bottom>
+                        <HBox styleClass="actions-bar" spacing="10" alignment="CENTER_LEFT">
+                            <padding>
+                                <Insets top="8" bottom="8" left="8" right="8"/>
+                            </padding>
+                            <Button text="Добавить" onAction="#onAddClient" styleClass="btn-primary"/>
+                            <Button text="Изменить" onAction="#onEditClient"/>
+                            <Button text="Удалить" onAction="#onDeleteClient" styleClass="btn-danger"/>
+                        </HBox>
+                    </bottom>
+                </BorderPane>
+            </Tab>
+        </TabPane>
+    </center>
+</BorderPane>

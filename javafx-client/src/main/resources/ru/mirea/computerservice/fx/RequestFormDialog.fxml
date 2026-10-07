@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<!--
+    Форма заявки. Используется и для создания, и для редактирования —
+    режим определяет RequestFormDialogController (initForEdit() переключает вид).
+    ComboBox для клиента и статуса — пользователь выбирает из готового списка,
+    а не вводит ID вручную (требование ТЗ про связанные сущности).
+-->
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="ru.mirea.computerservice.fx.controller.RequestFormDialogController"
+      spacing="12" stylesheets="@app.css" styleClass="dialog-pane" prefWidth="420">
+    <padding>
+        <Insets top="16" bottom="16" left="16" right="16"/>
+    </padding>
+
+    <Label fx:id="titleLabel" styleClass="dialog-title" text="Новая заявка"/>
+
+    <GridPane hgap="10" vgap="10">
+        <columnConstraints>
+            <ColumnConstraints minWidth="120"/>
+            <ColumnConstraints hgrow="ALWAYS"/>
+        </columnConstraints>
+
+        <Label text="Клиент:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <ComboBox fx:id="clientCombo" GridPane.rowIndex="0" GridPane.columnIndex="1" maxWidth="Infinity"/>
+
+        <Label text="Тип устройства:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <TextField fx:id="deviceTypeField" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+        <Label text="Описание:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <TextArea fx:id="descriptionArea" GridPane.rowIndex="2" GridPane.columnIndex="1"
+                  prefRowCount="3" wrapText="true"/>
+
+        <Label text="Приоритет:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+        <ComboBox fx:id="priorityCombo" GridPane.rowIndex="3" GridPane.columnIndex="1" maxWidth="Infinity"/>
+
+        <Label text="Статус:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+        <ComboBox fx:id="statusCombo" GridPane.rowIndex="4" GridPane.columnIndex="1" maxWidth="Infinity"/>
+
+        <Label text="Стоимость:" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+        <TextField fx:id="costField" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+    </GridPane>
+
+    <!-- Скрыт по умолчанию (visible/managed=false), показывается только при ошибке валидации -->
+    <Label fx:id="errorLabel" styleClass="error-label" wrapText="true" managed="false" visible="false"/>
+
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button text="Отмена" onAction="#onCancel"/>
+        <Button text="Сохранить" onAction="#onSave" styleClass="btn-primary"/>
+    </HBox>
+</VBox>
