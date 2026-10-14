@@ -13,7 +13,8 @@ public class Client {
     private String email; // Email
     private LocalDateTime registeredAt; // Дата и время регистрации
 
-    // Пустой конструктор. Нужен для создания объекта без начальных данных (например, при чтении из БД).
+    // Пустой конструктор. Нужен для создания объекта без начальных данных
+    // (например, при чтении из БД).
     public Client() {
     }
 
@@ -23,6 +24,7 @@ public class Client {
         this.phone = phone;
         this.email = email;
     }
+    // InputHelper (преобразование в типы) → Main → Service (проверка правил) → Конструктор/Сеттер модели  → SQL PreparedStatement →База данных.
 
     // Геттеры и сеттеры. Обеспечивают доступ к приватным полям.
     public int getId() {
@@ -68,13 +70,16 @@ public class Client {
     // Переопределяем equals. Два клиента равны, если у них одинаковый id.
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true; // Проверка на ссылочное равенство
-        if (!(o instanceof Client)) return false; // Проверка типа
+        if (this == o)
+            return true; // Проверка на ссылочное равенство
+        if (!(o instanceof Client))
+            return false; // Проверка типа
         Client client = (Client) o; // Приведение типа
         return id == client.id; // Сравнение по id
     }
 
-    // Переопределяем hashCode. Если equals сравнивает по id, то hashCode должен использовать id.
+    // Переопределяем hashCode. Если equals сравнивает по id, то hashCode должен
+    // использовать id.
     @Override
     public int hashCode() {
         return Objects.hash(id); // Генерируем хэш на основе id

@@ -50,7 +50,7 @@ public class RepairRequest {
         this.cost = BigDecimal.ZERO; // Начальная стоимость равна нулю
     }
 
-    /** Бизнес-правило: из финального статуса (DONE/CANCELLED) переход запрещён. */
+    /** Бизнес-правило: из финального статуса (DONE/CANCELLED) переход запрещён. TDA */
     // Метод проверяет, можно ли перевести заявку в новый статус.
     public boolean canTransitionTo(RequestStatus newStatus) {
         // Возвращает true, если текущий статус НЕ содержится в множестве финальных статусов.

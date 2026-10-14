@@ -16,6 +16,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC-реализация репозитория заявок. Запросы к repair_requests сразу делают JOIN
+ * с clients, чтобы в таблице интерфейса можно было показать ФИО клиента без
+ * дополнительных обращений к базе.
+ */
 public class RepairRequestRepositoryJdbc implements RepairRequestRepository {
 
     private static final String SELECT_BASE =
@@ -53,11 +58,8 @@ public class RepairRequestRepositoryJdbc implements RepairRequestRepository {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(mapRow(rs));
-                }
+                return rs.next() ? Optional.of(mapRow(rs)) : Optional.empty();
             }
-            return Optional.empty();
         } catch (SQLException e) {
             throw new DatabaseException("Ошибка при поиске заявки: " + e.getMessage(), e);
         }
@@ -65,18 +67,13 @@ public class RepairRequestRepositoryJdbc implements RepairRequestRepository {
 
     @Override
     public List<RepairRequest> findAll() {
-        String sql = SELECT_BASE + "ORDER BY r.id";
-        List<RepairRequest> result = new ArrayList<>();
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                result.add(mapRow(rs));
-            }
-            return result;
-        } catch (SQLException e) {
-            throw new DatabaseException("Ошибка при получении заявок: " + e.getMessage(), e);
-        }
+        return query(SELECT_BASE + "ORDER BY r.id", ps -> { });
+    }
+
+    @Override
+    public List<RepairRequest> findByClientId(int clientId) {
+        return query(SELECT_BASE + "WHERE r.client_id = ? ORDER BY r.created_at DESC, r.id DESC",
+                ps -> ps.setInt(1, clientId));
     }
 
     @Override
@@ -116,21 +113,35 @@ public class RepairRequestRepositoryJdbc implements RepairRequestRepository {
 
     @Override
     public List<RepairRequest> searchByDescription(String keyword) {
-        String sql = SELECT_BASE + "WHERE LOWER(r.problem_description) LIKE LOWER(?) ORDER BY r.id";
-        return searchWithLike(sql, keyword);
+        return query(SELECT_BASE + "WHERE LOWER(r.problem_description) LIKE LOWER(?) ESCAPE '\\' ORDER BY r.id",
+                ps -> ps.setString(1, SqlUtil.likeContains(keyword)));
     }
 
     @Override
     public List<RepairRequest> searchByClientName(String namePart) {
-        String sql = SELECT_BASE + "WHERE LOWER(c.full_name) LIKE LOWER(?) ORDER BY r.id";
-        return searchWithLike(sql, namePart);
+        return query(SELECT_BASE + "WHERE LOWER(c.full_name) LIKE LOWER(?) ESCAPE '\\' ORDER BY r.id",
+                ps -> ps.setString(1, SqlUtil.likeContains(namePart)));
     }
 
-    private List<RepairRequest> searchWithLike(String sql, String keyword) {
+    @Override
+    public List<RepairRequest> searchAnyField(String keyword) {
+        String sql = SELECT_BASE + "WHERE LOWER(r.problem_description) LIKE LOWER(?) ESCAPE '\\' " +
+                "OR LOWER(r.device_type) LIKE LOWER(?) ESCAPE '\\' " +
+                "OR LOWER(c.full_name) LIKE LOWER(?) ESCAPE '\\' ORDER BY r.id";
+        String pattern = SqlUtil.likeContains(keyword);
+        return query(sql, ps -> {
+            ps.setString(1, pattern);
+            ps.setString(2, pattern);
+            ps.setString(3, pattern);
+        });
+    }
+
+    /** Общий метод выполнения SELECT и преобразования строк в объекты. */
+    private List<RepairRequest> query(String sql, SqlUtil.ParamSetter setter) {
         List<RepairRequest> result = new ArrayList<>();
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, "%" + keyword + "%");
+            setter.set(ps);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     result.add(mapRow(rs));
@@ -138,7 +149,7 @@ public class RepairRequestRepositoryJdbc implements RepairRequestRepository {
             }
             return result;
         } catch (SQLException e) {
-            throw new DatabaseException("Ошибка при поиске заявок: " + e.getMessage(), e);
+            throw new DatabaseException("Ошибка при получении заявок: " + e.getMessage(), e);
         }
     }
 

@@ -34,25 +34,31 @@ public class Main { // Главный класс программы — точк
         }
         // Если запущено внутри IDE без консоли
         try {
-            String nativeEncoding = System.getProperty("native.encoding", Charset.defaultCharset().name()); // Получаем кодировку системы
+            String nativeEncoding = System.getProperty("native.encoding", Charset.defaultCharset().name()); // Получаем
+                                                                                                            // кодировку
+                                                                                                            // системы
             return new Scanner(System.in, nativeEncoding); // Создаем Scanner с этой кодировкой
         } catch (Exception e) { // Если что-то пошло не так
             return new Scanner(System.in); // Fallback — обычный Scanner
         }
     }
 
-    private static final ClientRepository clientRepository = new ClientRepositoryJdbc(); // Создаем репозиторий клиентов (JDBC)
-    private static final ClientService clientService = new ClientService(clientRepository); // Создаем сервис клиентов, передаем репозиторий
-    private static final RepairRequestRepository requestRepository = new RepairRequestRepositoryJdbc(); // Создаем репозиторий заявок (JDBC)
-    private static final RepairRequestService requestService =
-            new RepairRequestService(requestRepository, clientService); // Создаем сервис заявок, передаем репозиторий и сервис клиентов
+    private static final ClientRepository clientRepository = new ClientRepositoryJdbc(); // Создаем репозиторий клиентов
+                                                                                         // (JDBC)
+    private static final ClientService clientService = new ClientService(clientRepository); // Создаем сервис клиентов,
+                                                                                            // передаем репозиторий
+    private static final RepairRequestRepository requestRepository = new RepairRequestRepositoryJdbc(); // Создаем
+                                                                                                        // репозиторий
+                                                                                                        // заявок (JDBC)
+    private static final RepairRequestService requestService = new RepairRequestService(requestRepository,
+            clientService); // Создаем сервис заявок, передаем репозиторий и сервис клиентов
 
     public static void main(String[] args) { // Точка входа в программу
         boolean running = true; // Флаг работы программы
         while (running) { // Главный цикл программы
             printMainMenu(); // Выводим главное меню
             int choice = InputHelper.readInt(scanner, "Выберите действие: "); // Читаем выбор пользователя
-            try { // Обрабатываем возможные исключения
+            try { // Обрабатываем возможные исключения //
                 switch (choice) { // Выбор действия
                     case 1 -> clientsMenu(); // Меню клиентов
                     case 2 -> requestsMenu(); // Меню заявок
@@ -118,8 +124,10 @@ public class Main { // Главный класс программы — точк
     private static void addClient() { // Метод добавления клиента
         String name = InputHelper.readNonEmptyString(scanner, "ФИО клиента: "); // Читаем ФИО (не пустое)
         String phone = InputHelper.readNonEmptyString(scanner, "Телефон: "); // Читаем телефон (не пустой)
-        String email = InputHelper.readString(scanner, "Email (можно оставить пустым): "); // Читаем email (может быть пустым)
-        Client client = clientService.create(name, phone, email.isEmpty() ? null : email); // Создаем клиента (email = null, если пусто)
+        String email = InputHelper.readString(scanner, "Email (можно оставить пустым): "); // Читаем email (может быть
+                                                                                           // пустым)
+        Client client = clientService.create(name, phone, email.isEmpty() ? null : email); // Создаем клиента (email =
+                                                                                           // null, если пусто)
         System.out.println("Клиент создан: " + client); // Выводим результат
     }
 
@@ -128,11 +136,16 @@ public class Main { // Главный класс программы — точк
         Client client = clientService.getById(id); // Получаем клиента (или исключение)
         System.out.println("Текущие данные: " + client); // Показываем текущие данные
         String name = InputHelper.readString(scanner, "Новое ФИО (Enter — оставить прежнее): "); // Читаем новое ФИО
-        if (!name.isEmpty()) client.setFullName(name); // Если не пусто — обновляем
-        String phone = InputHelper.readString(scanner, "Новый телефон (Enter — оставить прежний): "); // Читаем новый телефон
-        if (!phone.isEmpty()) client.setPhone(phone); // Если не пусто — обновляем
-        String email = InputHelper.readString(scanner, "Новый email (Enter — оставить прежний): "); // Читаем новый email
-        if (!email.isEmpty()) client.setEmail(email); // Если не пусто — обновляем
+        if (!name.isEmpty())
+            client.setFullName(name); // Если не пусто — обновляем
+        String phone = InputHelper.readString(scanner, "Новый телефон (Enter — оставить прежний): "); // Читаем новый
+                                                                                                      // телефон
+        if (!phone.isEmpty())
+            client.setPhone(phone); // Если не пусто — обновляем
+        String email = InputHelper.readString(scanner, "Новый email (Enter — оставить прежний): "); // Читаем новый
+                                                                                                    // email
+        if (!email.isEmpty())
+            client.setEmail(email); // Если не пусто — обновляем
         clientService.update(client); // Сохраняем изменения
         System.out.println("Клиент обновлён."); // Сообщение
     }
@@ -283,8 +296,12 @@ public class Main { // Главный класс программы — точк
             }
             case 2 -> printRequests(requestService.filterByPriority(choosePriority())); // По приоритету
             case 3 -> { // По диапазону дат
-                LocalDate from = LocalDate.parse(InputHelper.readNonEmptyString(scanner, "Дата от (гггг-мм-дд): ")); // Читаем дату "от"
-                LocalDate to = LocalDate.parse(InputHelper.readNonEmptyString(scanner, "Дата до (гггг-мм-дд): ")); // Читаем дату "до"
+                LocalDate from = LocalDate.parse(InputHelper.readNonEmptyString(scanner, "Дата от (гггг-мм-дд): ")); // Читаем
+                                                                                                                     // дату
+                                                                                                                     // "от"
+                LocalDate to = LocalDate.parse(InputHelper.readNonEmptyString(scanner, "Дата до (гггг-мм-дд): ")); // Читаем
+                                                                                                                   // дату
+                                                                                                                   // "до"
                 printRequests(requestService.filterByDateRange(from, to)); // Фильтруем и выводим
             }
             case 4 -> printRequests(requestService.sortByDate()); // Сортировка по дате
@@ -301,13 +318,16 @@ public class Main { // Главный класс программы — точк
         System.out.println(); // Пустая строка
         System.out.println("---- СТАТИСТИКА ----"); // Заголовок
         Map<String, Object> stats = requestService.getStatistics(); // Получаем статистику
-        stats.forEach((key, value) -> System.out.printf("%-32s %s%n", key + ":", value)); // Выводим каждую пару ключ-значение
+        stats.forEach((key, value) -> System.out.printf("%-32s %s%n", key + ":", value)); // Выводим каждую пару
+                                                                                          // ключ-значение
     }
 
     // ---------------- Экспорт ----------------
 
     private static void exportMenu() { // Меню экспорта
-        String fileName = InputHelper.readNonEmptyString(scanner, "Имя файла для экспорта (например export.xlsx): "); // Читаем имя файла
+        String fileName = InputHelper.readNonEmptyString(scanner, "Имя файла для экспорта (например export.xlsx): "); // Читаем
+                                                                                                                      // имя
+                                                                                                                      // файла
         try {
             ExcelExporter.exportRequests(requestService.getAll(), fileName); // Экспортируем все заявки
             System.out.println("Экспорт выполнен: " + fileName); // Сообщение об успехе

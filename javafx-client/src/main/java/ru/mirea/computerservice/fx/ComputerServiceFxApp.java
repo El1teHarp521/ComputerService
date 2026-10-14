@@ -7,8 +7,12 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 /**
- * Точка входа JavaFX-приложения. Аналог Main.java из консольной КР1,
- * только вместо цикла с Scanner здесь загружается главное окно из FXML.
+ * Приложение JavaFX. Три ключевых понятия (спрашивают на защите):
+ *  - Stage — окно операционной системы (здесь primaryStage — главное окно);
+ *  - Scene — содержимое окна: дерево элементов интерфейса, которое загружено из FXML;
+ *  - Node — любой элемент этого дерева (кнопка, таблица, панель — всё это Node).
+ *
+ * Метод start() вызывается JavaFX в потоке интерфейса (JavaFX Application Thread).
  */
 public class ComputerServiceFxApp extends Application {
 
@@ -16,16 +20,12 @@ public class ComputerServiceFxApp extends Application {
     public void start(Stage primaryStage) throws Exception {
         FXMLLoader loader = new FXMLLoader(
                 getClass().getResource("/ru/mirea/computerservice/fx/MainView.fxml"));
-        Parent root = loader.load();
+        Parent root = loader.load(); // здесь же создаётся MainController и внедряются поля @FXML
 
         primaryStage.setTitle("Компьютерный сервис — учёт заявок на ремонт");
-        primaryStage.setScene(new Scene(root, 1100, 650));
-        primaryStage.setMinWidth(900);
-        primaryStage.setMinHeight(500);
+        primaryStage.setScene(new Scene(root, 1280, 720));
+        primaryStage.setMinWidth(1150);
+        primaryStage.setMinHeight(640);
         primaryStage.show();
-    }
-
-    public static void main(String[] args) {
-        launch(args);
     }
 }

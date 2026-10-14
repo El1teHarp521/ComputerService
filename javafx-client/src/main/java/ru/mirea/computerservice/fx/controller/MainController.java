@@ -1,6 +1,8 @@
 package ru.mirea.computerservice.fx.controller;
 
 import javafx.application.Platform;
+import javafx.beans.Observable;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -8,42 +10,91 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.chart.BarChart;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ProgressBar;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableRow;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import ru.mirea.computerservice.exception.BusinessException;
-import ru.mirea.computerservice.exception.DatabaseException;
-import ru.mirea.computerservice.exception.EntityNotFoundException;
+import ru.mirea.computerservice.fx.util.FxTasks;
+import ru.mirea.computerservice.fx.util.Ui;
 import ru.mirea.computerservice.model.Client;
 import ru.mirea.computerservice.model.Priority;
 import ru.mirea.computerservice.model.RepairRequest;
 import ru.mirea.computerservice.model.RequestStatus;
-import ru.mirea.computerservice.repository.ClientRepository;
 import ru.mirea.computerservice.repository.ClientRepositoryJdbc;
-import ru.mirea.computerservice.repository.RepairRequestRepository;
 import ru.mirea.computerservice.repository.RepairRequestRepositoryJdbc;
 import ru.mirea.computerservice.service.ClientService;
 import ru.mirea.computerservice.service.RepairRequestService;
+import ru.mirea.computerservice.service.RequestSortOrder;
 import ru.mirea.computerservice.util.ExcelExporter;
 
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.LinkedHashSet;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
+import java.util.function.ToIntFunction;
 
 /**
- * Контроллер главного окна — это ровно слой "Console UI" из архитектуры КР1,
- * только теперь он не печатает текст в консоль, а обновляет таблицы и открывает
- * диалоговые окна. SQL и бизнес-правила сюда НЕ попадают — только вызовы
- * ClientService / RepairRequestService, в точности как в Main.java из КР1.
+ * Контроллер главного окна. Это слой «Controller» из архитектуры
+ * View/FXML -> Controller -> Service -> Repository/DAO -> БД:
+ * он принимает действия пользователя, вызывает сервисы и обновляет таблицы.
+ * SQL и бизнес-правил здесь нет — они в *RepositoryJdbc и *Service.
+ *
+ * Связь с FXML: поля с @FXML получают объекты разметки по совпадению имени с атрибутом fx:id,
+ * а методы-обработчики подключены атрибутами onAction="#имяМетода" в MainView.fxml.
  */
 public class MainController {
 
-    // ---- Колонки и элементы вкладки "Заявки" ----
+    private static final String FXML_DIR = "/ru/mirea/computerservice/fx/";
+    private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+    private static final Locale RU = Locale.forLanguageTag("ru");
+
+    // ---------- общие элементы окна ----------
+    @FXML private TabPane mainTabs;
+    @FXML private Tab requestsTab;
+    @FXML private Tab statsTab;
+    @FXML private ProgressBar busyBar;
+    @FXML private Label statusLabel;
+
+    // ---------- поиск, фильтры, сортировка ----------
+    @FXML private HBox searchRow;
+    @FXML private HBox filterGroup;
+    @FXML private TextField searchField;
+    @FXML private ComboBox<RequestSortOrder> sortCombo;
+    @FXML private ComboBox<RequestStatus> statusFilterCombo;
+    @FXML private ComboBox<Priority> priorityFilterCombo;
+    @FXML private DatePicker dateFromPicker;
+    @FXML private DatePicker dateToPicker;
+
+    // ---------- вкладка «Заявки» ----------
     @FXML private TableView<RepairRequest> requestsTable;
     @FXML private TableColumn<RepairRequest, Integer> colId;
     @FXML private TableColumn<RepairRequest, String> colClient;
@@ -52,67 +103,155 @@ public class MainController {
     @FXML private TableColumn<RepairRequest, String> colStatus;
     @FXML private TableColumn<RepairRequest, String> colPriority;
     @FXML private TableColumn<RepairRequest, BigDecimal> colCost;
-    @FXML private TableColumn<RepairRequest, String> colCreatedAt;
+    @FXML private TableColumn<RepairRequest, LocalDateTime> colCreatedAt;
     @FXML private Label requestsStatusLabel;
+    @FXML private Button editRequestButton;
+    @FXML private Button deleteRequestButton;
 
-    @FXML private TextField searchField;
-    @FXML private ComboBox<RequestStatus> statusFilterCombo;
-    @FXML private ComboBox<Priority> priorityFilterCombo;
+    // панель «Сведения о заявке»
+    @FXML private Label detailTitle;
+    @FXML private Label detailClient;
+    @FXML private Label detailContacts;
+    @FXML private Label detailDevice;
+    @FXML private Label detailStatus;
+    @FXML private Label detailPriority;
+    @FXML private Label detailCost;
+    @FXML private Label detailCreated;
+    @FXML private Label detailCompleted;
+    @FXML private TextArea detailDescription;
 
-    // ---- Колонки и элементы вкладки "Клиенты" ----
+    // ---------- вкладка «Клиенты» ----------
     @FXML private TableView<Client> clientsTable;
     @FXML private TableColumn<Client, Integer> colClientId;
     @FXML private TableColumn<Client, String> colClientName;
     @FXML private TableColumn<Client, String> colClientPhone;
     @FXML private TableColumn<Client, String> colClientEmail;
+    @FXML private Button editClientButton;
+    @FXML private Button deleteClientButton;
 
-    // Тот же сервисный слой, что и в консольной КР1 — отличается только то,
-    // что вызывает его теперь JavaFX, а не Scanner с консольным меню.
-    private final ClientRepository clientRepository = new ClientRepositoryJdbc();
-    private final ClientService clientService = new ClientService(clientRepository);
-    private final RepairRequestRepository requestRepository = new RepairRequestRepositoryJdbc();
+    // связанные данные: заявки выбранного клиента
+    @FXML private Label clientRequestsTitle;
+    @FXML private TableView<RepairRequest> clientRequestsTable;
+    @FXML private TableColumn<RepairRequest, Integer> ccId;
+    @FXML private TableColumn<RepairRequest, String> ccDevice;
+    @FXML private TableColumn<RepairRequest, String> ccDescription;
+    @FXML private TableColumn<RepairRequest, String> ccStatus;
+    @FXML private TableColumn<RepairRequest, String> ccPriority;
+    @FXML private TableColumn<RepairRequest, BigDecimal> ccCost;
+    @FXML private TableColumn<RepairRequest, LocalDateTime> ccCreatedAt;
+
+    // ---------- вкладка «Статистика» ----------
+    @FXML private GridPane statsGrid;
+    @FXML private BarChart<String, Number> statusChart;
+
+    // Тот же слой Service/Repository, что и в консольной КР1; отличается только UI.
+    private final ClientService clientService = new ClientService(new ClientRepositoryJdbc());
     private final RepairRequestService requestService =
-            new RepairRequestService(requestRepository, clientService);
+            new RepairRequestService(new RepairRequestRepositoryJdbc(), clientService);
 
-    // ObservableList — специальная JavaFX-коллекция: TableView сама перерисовывается,
-    // когда её содержимое меняется через setAll()/add()/remove()
+    // ObservableList — «наблюдаемый» список: TableView подписана на него и перерисовывается сама,
+    // когда в списке меняются элементы (setAll / add / remove).
     private final ObservableList<RepairRequest> requestsData = FXCollections.observableArrayList();
     private final ObservableList<Client> clientsData = FXCollections.observableArrayList();
+    private final ObservableList<RepairRequest> clientRequestsData = FXCollections.observableArrayList();
 
-    /**
-     * Вызывается автоматически FXMLLoader-ом сразу после того, как все @FXML-поля
-     * уже внедрены (аннотация @FXML на самом методе — специальный "метод жизненного цикла").
-     */
-    @FXML
-    public void initialize() {
-        setupRequestsTable();
-        setupClientsTable();
-        setupFilters();
-        reloadAll();
+    private int busyCount;          // сколько фоновых операций сейчас выполняется
+    private int requestsLoadSeq;    // номер последней загрузки заявок (защита от «устаревших» ответов)
+    private boolean suppressReload; // true, пока сброс фильтров меняет сразу несколько контролов
+
+    private record StatsSnapshot(Map<String, String> indicators, Map<RequestStatus, Long> byStatus) {
     }
 
-    // ---------------- Настройка таблиц ----------------
+    // ===================================================================== инициализация
+
+    /** Вызывается FXMLLoader-ом сразу после загрузки разметки и внедрения всех @FXML-полей. */
+    @FXML
+    private void initialize() {
+        setupRequestsTable();
+        setupClientRequestsTable();
+        setupClientsTable();
+        setupFilters();
+        setupSelectionHandling();
+        refreshAll();
+    }
 
     private void setupRequestsTable() {
-        // PropertyValueFactory находит метод getId()/getDeviceType()/... по имени поля через рефлексию
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colClient.setCellValueFactory(new PropertyValueFactory<>("clientName"));
-        colDevice.setCellValueFactory(new PropertyValueFactory<>("deviceType"));
-        colDescription.setCellValueFactory(new PropertyValueFactory<>("problemDescription"));
-        colCost.setCellValueFactory(new PropertyValueFactory<>("cost"));
-
-        // Статус и приоритет — enum-ы, а в таблице должно быть русское название,
-        // поэтому здесь не PropertyValueFactory, а своя лямбда с SimpleStringProperty
-        colStatus.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getStatus().getDisplayName()));
-        colPriority.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getPriority().getDisplayName()));
-        colCreatedAt.setCellValueFactory(cellData -> {
-            var createdAt = cellData.getValue().getCreatedAt();
-            return new SimpleStringProperty(createdAt == null ? "" : createdAt.toLocalDate().toString());
-        });
-
+        setupCommonRequestColumns(colDevice, colDescription, colStatus, colPriority, colCost, colCreatedAt);
         requestsTable.setItems(requestsData);
+        stretchColumn(requestsTable, colDescription);
+        requestsTable.setPlaceholder(new Label("Заявок нет или они не подходят под условия поиска"));
+
+        // раскраска строк по состоянию заявки + двойной щелчок = редактирование
+        requestsTable.setRowFactory(table -> {
+            TableRow<RepairRequest> row = new TableRow<>() {
+                @Override
+                protected void updateItem(RepairRequest item, boolean empty) {
+                    super.updateItem(item, empty);
+                    getStyleClass().removeAll("row-done", "row-cancelled", "row-urgent");
+                    if (!empty && item != null) {
+                        if (item.getStatus() == RequestStatus.DONE) {
+                            getStyleClass().add("row-done");
+                        } else if (item.getStatus() == RequestStatus.CANCELLED) {
+                            getStyleClass().add("row-cancelled");
+                        } else if (item.getPriority() == Priority.URGENT) {
+                            getStyleClass().add("row-urgent");
+                        }
+                    }
+                }
+            };
+            row.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 2 && !row.isEmpty()) {
+                    onEditRequest();
+                }
+            });
+            return row;
+        });
+    }
+
+    private void setupClientRequestsTable() {
+        ccId.setCellValueFactory(new PropertyValueFactory<>("id"));
+        setupCommonRequestColumns(ccDevice, ccDescription, ccStatus, ccPriority, ccCost, ccCreatedAt);
+        clientRequestsTable.setItems(clientRequestsData);
+        stretchColumn(clientRequestsTable, ccDescription);
+        clientRequestsTable.setPlaceholder(new Label("У выбранного клиента нет заявок"));
+    }
+
+    /**
+     * Колонки, одинаковые для обеих таблиц заявок (общей и «заявки клиента»).
+     * Вынесено в метод, чтобы не дублировать настройку — в ТЗ это прямо запрещено.
+     */
+    private void setupCommonRequestColumns(TableColumn<RepairRequest, String> device,
+                                           TableColumn<RepairRequest, String> description,
+                                           TableColumn<RepairRequest, String> status,
+                                           TableColumn<RepairRequest, String> priority,
+                                           TableColumn<RepairRequest, BigDecimal> cost,
+                                           TableColumn<RepairRequest, LocalDateTime> createdAt) {
+        device.setCellValueFactory(new PropertyValueFactory<>("deviceType"));
+        description.setCellValueFactory(new PropertyValueFactory<>("problemDescription"));
+        // enum показываем по-русски; сортировка по этой колонке идёт по тексту названия
+        status.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getStatus().getDisplayName()));
+        priority.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getPriority().getDisplayName()));
+
+        // Значения колонок «стоимость» и «дата» остаются числом/датой (поэтому сортируются верно),
+        // а красиво форматируются только при отрисовке ячейки.
+        cost.setCellValueFactory(new PropertyValueFactory<>("cost"));
+        cost.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(BigDecimal item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : String.format(RU, "%,.2f", item));
+            }
+        });
+        createdAt.setCellValueFactory(new PropertyValueFactory<>("createdAt"));
+        createdAt.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(LocalDateTime item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : item.format(DATE_TIME));
+            }
+        });
     }
 
     private void setupClientsTable() {
@@ -121,39 +260,204 @@ public class MainController {
         colClientPhone.setCellValueFactory(new PropertyValueFactory<>("phone"));
         colClientEmail.setCellValueFactory(new PropertyValueFactory<>("email"));
         clientsTable.setItems(clientsData);
+        stretchColumn(clientsTable, colClientName);
+        clientsTable.setPlaceholder(new Label("Клиентов пока нет"));
+        clientsTable.setRowFactory(table -> {
+            TableRow<Client> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 2 && !row.isEmpty()) {
+                    onEditClient();
+                }
+            });
+            return row;
+        });
     }
 
     private void setupFilters() {
-        statusFilterCombo.setItems(FXCollections.observableArrayList(RequestStatus.values()));
-        priorityFilterCombo.setItems(FXCollections.observableArrayList(Priority.values()));
+        sortCombo.setItems(FXCollections.observableArrayList(RequestSortOrder.values()));
+        sortCombo.setValue(RequestSortOrder.BY_ID);
+        configureFilterCombo(statusFilterCombo, RequestStatus.values(), "Все статусы");
+        configureFilterCombo(priorityFilterCombo, Priority.values(), "Любой приоритет");
 
-        // Фильтр применяется сразу при выборе значения в списке — отдельную кнопку "Применить" не делаем
-        statusFilterCombo.valueProperty().addListener((obs, oldValue, newValue) -> {
-            if (newValue != null) {
-                requestsData.setAll(requestService.filterByStatus(newValue));
-                requestsStatusLabel.setText("По статусу \"" + newValue.getDisplayName() + "\": " + requestsData.size());
+        // Любое изменение условия сразу перезапрашивает таблицу (кроме массового сброса).
+        sortCombo.valueProperty().addListener((obs, oldValue, newValue) -> reloadIfAllowed());
+        statusFilterCombo.valueProperty().addListener((obs, oldValue, newValue) -> reloadIfAllowed());
+        priorityFilterCombo.valueProperty().addListener((obs, oldValue, newValue) -> reloadIfAllowed());
+        dateFromPicker.valueProperty().addListener((obs, oldValue, newValue) -> reloadIfAllowed());
+        dateToPicker.valueProperty().addListener((obs, oldValue, newValue) -> reloadIfAllowed());
+    }
+
+    /**
+     * Фильтр-ComboBox с первым пунктом-«заглушкой» (null) вида «Все статусы»:
+     * выбор этого пункта снимает фильтр. Подпись показывается и в закрытом списке.
+     */
+    private static <T> void configureFilterCombo(ComboBox<T> combo, T[] values, String allLabel) {
+        ObservableList<T> items = FXCollections.observableArrayList();
+        items.add(null);
+        items.addAll(values);
+        combo.setItems(items);
+        combo.setCellFactory(listView -> new ListCell<>() {
+            @Override
+            protected void updateItem(T item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty ? null : (item == null ? allLabel : item.toString()));
             }
         });
-        priorityFilterCombo.valueProperty().addListener((obs, oldValue, newValue) -> {
-            if (newValue != null) {
-                requestsData.setAll(requestService.filterByPriority(newValue));
-                requestsStatusLabel.setText("По приоритету \"" + newValue.getDisplayName() + "\": " + requestsData.size());
+        combo.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(T item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(item == null ? allLabel : item.toString());
             }
         });
     }
 
-    /** Перечитывает обе таблицы из базы данных заново. Вызывается после любого CRUD-действия. */
-    private void reloadAll() {
-        try {
-            requestsData.setAll(requestService.getAll());
-            clientsData.setAll(clientService.getAll());
-            requestsStatusLabel.setText("Записей: " + requestsData.size());
-        } catch (DatabaseException e) {
-            showError("Ошибка базы данных", e.getMessage());
+    private void setupSelectionHandling() {
+        // кнопки «Изменить/Удалить» доступны только при выбранной строке
+        editRequestButton.disableProperty().bind(requestsTable.getSelectionModel().selectedItemProperty().isNull());
+        deleteRequestButton.disableProperty().bind(requestsTable.getSelectionModel().selectedItemProperty().isNull());
+        editClientButton.disableProperty().bind(clientsTable.getSelectionModel().selectedItemProperty().isNull());
+        deleteClientButton.disableProperty().bind(clientsTable.getSelectionModel().selectedItemProperty().isNull());
+
+        requestsTable.getSelectionModel().selectedItemProperty()
+                .addListener((obs, oldValue, newValue) -> showRequestDetails(newValue));
+        clientsTable.getSelectionModel().selectedItemProperty()
+                .addListener((obs, oldValue, newValue) -> loadClientRequests(newValue));
+        // Условия поиска относятся только к заявкам: на других вкладках они затемнены
+        searchRow.disableProperty().bind(requestsTab.selectedProperty().not());
+        filterGroup.disableProperty().bind(requestsTab.selectedProperty().not());
+        showRequestDetails(null);
+    }
+
+    /**
+     * Ширина колонки = всё свободное место таблицы. Нужна вместо CONSTRAINED_RESIZE_POLICY,
+     * который игнорирует заданные в FXML ширины и делает все колонки одинаковыми:
+     * у остальных колонок остаётся заданная ширина, а «длинная» колонка занимает остаток.
+     */
+    private static <S> void stretchColumn(TableView<S> table, TableColumn<S, ?> stretch) {
+        Observable[] others = table.getColumns().stream()
+                .filter(column -> column != stretch)
+                .map(TableColumn::widthProperty)
+                .toArray(Observable[]::new);
+        stretch.setMinWidth(120);
+        stretch.prefWidthProperty().bind(table.widthProperty().subtract(
+                Bindings.createDoubleBinding(() -> table.getColumns().stream()
+                        .filter(column -> column != stretch)
+                        .mapToDouble(TableColumn::getWidth).sum(), others)).subtract(18));
+    }
+
+    // ===================================================================== загрузка данных
+
+    /** Перечитывает из базы всё, что видно на экране. Вызывается после любого изменения данных. */
+    private void refreshAll() {
+        loadClients();
+        loadRequests();
+        loadStatistics();
+    }
+
+    private void reloadIfAllowed() {
+        if (!suppressReload) {
+            loadRequests();
         }
     }
 
-    // ---------------- Заявки: CRUD ----------------
+    private void loadClients() {
+        Integer selectedId = selectedId(clientsTable, Client::getId);
+        async(clientService::getAll, clients -> {
+            clientsData.setAll(clients);
+            reselect(clientsTable, Client::getId, selectedId);
+            showRequestDetails(requestsTable.getSelectionModel().getSelectedItem()); // обновить контакты
+        }, this::fail);
+    }
+
+    private void loadRequests() {
+        // Условия читаются здесь, в UI-потоке; в фоновый поток уходят уже готовые значения.
+        String keyword = searchField.getText();
+        RequestStatus status = statusFilterCombo.getValue();
+        Priority priority = priorityFilterCombo.getValue();
+        LocalDate from = dateFromPicker.getValue();
+        LocalDate to = dateToPicker.getValue();
+        RequestSortOrder order = sortCombo.getValue();
+        Integer selectedId = selectedId(requestsTable, RepairRequest::getId);
+        int seq = ++requestsLoadSeq;
+
+        async(() -> requestService.findFiltered(keyword, status, priority, from, to, order),
+                list -> {
+                    if (seq != requestsLoadSeq) {
+                        return; // пока шёл этот запрос, уже запущен более новый — результат устарел
+                    }
+                    requestsData.setAll(list);
+                    reselect(requestsTable, RepairRequest::getId, selectedId);
+                    requestsStatusLabel.getStyleClass().remove("error-label");
+                    boolean filtered = (keyword != null && !keyword.isBlank())
+                            || status != null || priority != null || from != null || to != null;
+                    requestsStatusLabel.setText("Показано заявок: " + list.size() + (filtered ? " (применены условия)" : ""));
+                },
+                error -> {
+                    if (seq != requestsLoadSeq) {
+                        return;
+                    }
+                    if (error instanceof BusinessException) { // например, неверный период дат — без всплывающего окна
+                        if (!requestsStatusLabel.getStyleClass().contains("error-label")) {
+                            requestsStatusLabel.getStyleClass().add("error-label");
+                        }
+                        requestsStatusLabel.setText(error.getMessage());
+                    } else {
+                        fail(error);
+                    }
+                });
+    }
+
+    private void loadClientRequests(Client client) {
+        clientRequestsData.clear();
+        if (client == null) {
+            clientRequestsTitle.setText("Заявки выбранного клиента");
+            return;
+        }
+        int clientId = client.getId();
+        clientRequestsTitle.setText("Заявки клиента: " + client.getFullName());
+        async(() -> requestService.getByClient(clientId), list -> {
+            Client current = clientsTable.getSelectionModel().getSelectedItem();
+            if (current != null && current.getId() == clientId) { // выбор мог уже смениться
+                clientRequestsData.setAll(list);
+                clientRequestsTitle.setText("Заявки клиента: " + current.getFullName() + " (" + list.size() + ")");
+            }
+        }, this::fail);
+    }
+
+    private void loadStatistics() {
+        async(() -> new StatsSnapshot(requestService.getStatistics(), requestService.countByStatus()),
+                this::renderStatistics, this::fail);
+    }
+
+    private void renderStatistics(StatsSnapshot snapshot) {
+        statsGrid.getChildren().clear();
+        int row = 0;
+        for (Map.Entry<String, String> entry : snapshot.indicators().entrySet()) {
+            Label name = new Label(entry.getKey());
+            name.getStyleClass().add("stat-name");
+            Label value = new Label(entry.getValue());
+            value.getStyleClass().add("stat-value");
+            statsGrid.add(name, 0, row);
+            statsGrid.add(value, 1, row);
+            row++;
+        }
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        snapshot.byStatus().forEach((status, count) ->
+                series.getData().add(new XYChart.Data<>(status.getDisplayName(), count)));
+        statusChart.getData().setAll(List.of(series));
+
+        // Количество заявок — целое число, поэтому ось с шагом 1 и без дробных делений
+        long maxCount = snapshot.byStatus().values().stream().mapToLong(Long::longValue).max().orElse(0);
+        NumberAxis yAxis = (NumberAxis) statusChart.getYAxis();
+        yAxis.setAutoRanging(false);
+        yAxis.setLowerBound(0);
+        yAxis.setUpperBound(Math.max(1, maxCount) + 1);
+        yAxis.setTickUnit(1);
+        yAxis.setMinorTickVisible(false);
+    }
+
+    // ===================================================================== заявки: CRUD
 
     @FXML
     private void onAddRequest() {
@@ -163,71 +467,60 @@ public class MainController {
     @FXML
     private void onEditRequest() {
         RepairRequest selected = requestsTable.getSelectionModel().getSelectedItem();
-        if (selected == null) {
-            showWarning("Выберите заявку в таблице.");
-            return;
+        if (selected != null) {
+            openRequestDialog(selected);
         }
-        openRequestDialog(selected);
     }
 
     @FXML
     private void onDeleteRequest() {
         RepairRequest selected = requestsTable.getSelectionModel().getSelectedItem();
         if (selected == null) {
-            showWarning("Выберите заявку в таблице.");
             return;
         }
-        // Обязательное подтверждение перед удалением — требование ТЗ
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                "Удалить заявку №" + selected.getId() + "?", ButtonType.YES, ButtonType.NO);
-        confirm.setHeaderText(null);
-        confirm.showAndWait().ifPresent(button -> {
-            if (button == ButtonType.YES) {
-                try {
-                    requestService.delete(selected.getId());
-                    reloadAll();
-                } catch (BusinessException | EntityNotFoundException e) {
-                    showError("Нельзя удалить", e.getMessage());
-                } catch (DatabaseException e) {
-                    showError("Ошибка базы данных", e.getMessage());
-                }
-            }
-        });
+        // Обязательное подтверждение перед удалением (требование ТЗ)
+        if (!Ui.confirm(owner(), "Удалить заявку №" + selected.getId() + " (" + selected.getDeviceType()
+                + ", клиент: " + selected.getClientName() + ")?\nДействие нельзя отменить.")) {
+            return;
+        }
+        async(() -> {
+            requestService.delete(selected.getId());
+            return null;
+        }, result -> {
+            statusLabel.setText("Заявка №" + selected.getId() + " удалена");
+            refreshAll();
+        }, this::fail);
     }
 
-    /**
-     * Общий метод открытия формы заявки: requestToEdit == null -> режим создания,
-     * иначе -> режим редактирования. Используется и onAddRequest(), и onEditRequest().
-     */
-    private void openRequestDialog(RepairRequest requestToEdit) {
+    private void openRequestDialog(RepairRequest toEdit) {
+        if (clientsData.isEmpty()) {
+            Ui.warning(owner(), "Сначала добавьте хотя бы одного клиента на вкладке «Клиенты».");
+            return;
+        }
         try {
-            FXMLLoader loader = new FXMLLoader(
-                    getClass().getResource("/ru/mirea/computerservice/fx/RequestFormDialog.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(FXML_DIR + "RequestFormDialog.fxml"));
             Parent root = loader.load();
-
             RequestFormDialogController controller = loader.getController();
-            Stage dialogStage = new Stage();
-            dialogStage.setTitle(requestToEdit == null ? "Новая заявка" : "Изменение заявки");
-            dialogStage.initModality(Modality.APPLICATION_MODAL); // блокирует главное окно, пока форма открыта
-            dialogStage.setScene(new Scene(root));
 
-            controller.setDialogStage(dialogStage);
+            Stage stage = createDialogStage(root, toEdit == null ? "Новая заявка" : "Заявка №" + toEdit.getId());
+            controller.setDialogStage(stage);
             controller.setRequestService(requestService);
-            controller.initLookups(clientService.getAll());
-            if (requestToEdit != null) {
-                controller.initForEdit(requestToEdit);
+            controller.initLookups(new ArrayList<>(clientsData));
+            if (toEdit != null) {
+                controller.initForEdit(toEdit);
             }
 
-            dialogStage.showAndWait(); // ждём, пока пользователь закроет форму
+            stage.showAndWait(); // блокирует главное окно, пока форма открыта
             if (controller.isSaved()) {
-                reloadAll();
+                statusLabel.setText(toEdit == null ? "Заявка создана" : "Заявка №" + toEdit.getId() + " сохранена");
+                refreshAll();
             }
         } catch (IOException e) {
-            showError("Ошибка интерфейса", "Не удалось открыть форму заявки: " + e.getMessage());
+            Ui.error(owner(), "Не удалось открыть форму заявки: " + e.getMessage());
         }
     }
 
-    // ---------------- Клиенты: CRUD ----------------
+    // ===================================================================== клиенты: CRUD
 
     @FXML
     private void onAddClient() {
@@ -237,165 +530,161 @@ public class MainController {
     @FXML
     private void onEditClient() {
         Client selected = clientsTable.getSelectionModel().getSelectedItem();
-        if (selected == null) {
-            showWarning("Выберите клиента в таблице.");
-            return;
+        if (selected != null) {
+            openClientDialog(selected);
         }
-        openClientDialog(selected);
     }
 
     @FXML
     private void onDeleteClient() {
         Client selected = clientsTable.getSelectionModel().getSelectedItem();
         if (selected == null) {
-            showWarning("Выберите клиента в таблице.");
             return;
         }
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                "Удалить клиента \"" + selected.getFullName() + "\"?", ButtonType.YES, ButtonType.NO);
-        confirm.setHeaderText(null);
-        confirm.showAndWait().ifPresent(button -> {
-            if (button == ButtonType.YES) {
-                try {
-                    // ClientService сам проверит бизнес-правило "нельзя удалить клиента
-                    // с активными заявками" и бросит BusinessException, если нарушено
-                    clientService.delete(selected.getId());
-                    reloadAll();
-                } catch (BusinessException | EntityNotFoundException e) {
-                    showError("Нельзя удалить", e.getMessage());
-                } catch (DatabaseException e) {
-                    showError("Ошибка базы данных", e.getMessage());
-                }
-            }
-        });
+        if (!Ui.confirm(owner(), "Удалить клиента «" + selected.getFullName() + "»?")) {
+            return;
+        }
+        // Бизнес-правила удаления (нет активных заявок, нет истории) проверяет ClientService
+        async(() -> {
+            clientService.delete(selected.getId());
+            return null;
+        }, result -> {
+            statusLabel.setText("Клиент «" + selected.getFullName() + "» удалён");
+            refreshAll();
+        }, this::fail);
     }
 
-    private void openClientDialog(Client clientToEdit) {
+    private void openClientDialog(Client toEdit) {
         try {
-            FXMLLoader loader = new FXMLLoader(
-                    getClass().getResource("/ru/mirea/computerservice/fx/ClientFormDialog.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(FXML_DIR + "ClientFormDialog.fxml"));
             Parent root = loader.load();
-
             ClientFormDialogController controller = loader.getController();
-            Stage dialogStage = new Stage();
-            dialogStage.setTitle(clientToEdit == null ? "Новый клиент" : "Изменение клиента");
-            dialogStage.initModality(Modality.APPLICATION_MODAL);
-            dialogStage.setScene(new Scene(root));
 
-            controller.setDialogStage(dialogStage);
+            Stage stage = createDialogStage(root, toEdit == null ? "Новый клиент" : "Изменение клиента");
+            controller.setDialogStage(stage);
             controller.setClientService(clientService);
-            if (clientToEdit != null) {
-                controller.initForEdit(clientToEdit);
+            if (toEdit != null) {
+                controller.initForEdit(toEdit);
             }
 
-            dialogStage.showAndWait();
+            stage.showAndWait();
             if (controller.isSaved()) {
-                reloadAll();
+                statusLabel.setText(toEdit == null ? "Клиент добавлен" : "Данные клиента сохранены");
+                refreshAll();
             }
         } catch (IOException e) {
-            showError("Ошибка интерфейса", "Не удалось открыть форму клиента: " + e.getMessage());
+            Ui.error(owner(), "Не удалось открыть форму клиента: " + e.getMessage());
         }
     }
 
-    // ---------------- Поиск, фильтрация, сортировка ----------------
+    private Stage createDialogStage(Parent root, String title) {
+        Stage stage = new Stage();
+        stage.setTitle(title);
+        stage.initOwner(owner());
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.setScene(new Scene(root));
+        stage.setResizable(false);
+        return stage;
+    }
+
+    // ===================================================================== поиск и фильтры
 
     @FXML
     private void onSearch() {
-        String keyword = searchField.getText().trim();
-        if (keyword.isEmpty()) {
-            reloadAll();
-            return;
-        }
-        try {
-            // ТЗ требует минимум 2 способа поиска — по описанию и по имени клиента.
-            // Одно поле ввода покрывает оба сразу: ищем обоими способами и объединяем
-            // результаты в LinkedHashSet, чтобы не было повторов и сохранялся порядок.
-            List<RepairRequest> byDescription = requestService.searchByDescription(keyword);
-            List<RepairRequest> byClient = requestService.searchByClientName(keyword);
-            LinkedHashSet<RepairRequest> merged = new LinkedHashSet<>(byDescription);
-            merged.addAll(byClient);
-
-            requestsData.setAll(merged);
-            requestsStatusLabel.setText("Найдено: " + requestsData.size());
-        } catch (DatabaseException e) {
-            showError("Ошибка базы данных", e.getMessage());
-        }
+        loadRequests();
     }
 
     @FXML
     private void onResetFilter() {
-        statusFilterCombo.getSelectionModel().clearSelection();
-        priorityFilterCombo.getSelectionModel().clearSelection();
+        suppressReload = true; // чтобы пять изменений ниже дали ОДИН запрос, а не пять
         searchField.clear();
-        reloadAll();
-    }
-
-    @FXML
-    private void onSortByDate() {
-        requestsData.setAll(requestService.sortByDate());
-    }
-
-    @FXML
-    private void onSortByCost() {
-        requestsData.setAll(requestService.sortByCost());
+        statusFilterCombo.setValue(null);
+        priorityFilterCombo.setValue(null);
+        dateFromPicker.setValue(null);
+        dateToPicker.setValue(null);
+        sortCombo.setValue(RequestSortOrder.BY_ID);
+        suppressReload = false;
+        loadRequests();
     }
 
     @FXML
     private void onRefresh() {
-        reloadAll();
+        refreshAll();
+        statusLabel.setText("Данные обновлены");
     }
 
-    // ---------------- Статистика ----------------
+    // ===================================================================== статистика, экспорт
 
     @FXML
-    private void onStatistics() {
-        Map<String, Object> stats = requestService.getStatistics();
-        StringBuilder text = new StringBuilder();
-        stats.forEach((key, value) -> text.append(key).append(": ").append(value).append("\n"));
-
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Статистика");
-        alert.setHeaderText("Статистика системы");
-        alert.setContentText(text.toString());
-        alert.showAndWait();
+    private void onShowStatistics() {
+        mainTabs.getSelectionModel().select(statsTab);
+        loadStatistics();
     }
 
-    // ---------------- Экспорт ----------------
-
+    /** Экспортирует ТЕКУЩИЙ набор данных — ровно те строки и в том порядке, что видны в таблице. */
     @FXML
     private void onExport() {
-        // Путь к файлу выбирает пользователь через системный диалог,
-        // никаких жёстко прописанных путей к файлам на диске — требование ТЗ
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Сохранить отчёт как...");
-        fileChooser.setInitialFileName("repair_requests.xlsx");
-        fileChooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Excel файлы (*.xlsx)", "*.xlsx"));
+        List<RepairRequest> rows = new ArrayList<>(requestsTable.getItems());
+        if (rows.isEmpty()) {
+            Ui.warning(owner(), "В таблице нет заявок — экспортировать нечего.");
+            return;
+        }
+        // Путь выбирает пользователь системным диалогом; в коде нет ни одного жёстко заданного пути.
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Сохранить заявки в Excel");
+        chooser.setInitialFileName("repair_requests_" + LocalDate.now() + ".xlsx");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel (*.xlsx)", "*.xlsx"));
+        File chosen = chooser.showSaveDialog(owner());
+        if (chosen == null) {
+            return; // нажали «Отмена»
+        }
+        File target = chosen.getName().toLowerCase(Locale.ROOT).endsWith(".xlsx")
+                ? chosen
+                : new File(chosen.getParentFile(), chosen.getName() + ".xlsx");
 
-        File file = fileChooser.showSaveDialog(requestsTable.getScene().getWindow());
-        if (file == null) {
-            return; // пользователь нажал "Отмена" в системном диалоге
-        }
-        try {
-            ExcelExporter.exportRequests(requestService.getAll(), file.getAbsolutePath());
-            Alert alert = new Alert(Alert.AlertType.INFORMATION, "Экспорт выполнен: " + file.getName());
-            alert.setHeaderText(null);
-            alert.showAndWait();
-        } catch (IOException e) {
-            showError("Ошибка экспорта", e.getMessage());
-        }
+        async(() -> {
+            ExcelExporter.exportRequests(rows, target.getAbsolutePath());
+            return rows.size();
+        }, count -> {
+            statusLabel.setText("Экспортировано заявок: " + count);
+            Ui.info(owner(), "Экспортировано заявок: " + count + "\nФайл: " + target.getAbsolutePath());
+        }, this::fail);
     }
 
-    // ---------------- Меню "Справка" и "Выход" ----------------
+    // ===================================================================== сведения о заявке
+
+    private void showRequestDetails(RepairRequest request) {
+        if (request == null) {
+            detailTitle.setText("Выберите заявку в таблице");
+            for (Label label : List.of(detailClient, detailContacts, detailDevice, detailStatus,
+                    detailPriority, detailCost, detailCreated, detailCompleted)) {
+                label.setText("—");
+            }
+            detailDescription.clear();
+            return;
+        }
+        // Связанная сущность: контакты клиента берутся из уже загруженного списка клиентов
+        Client client = clientsData.stream().filter(c -> c.getId() == request.getClientId()).findFirst().orElse(null);
+        detailTitle.setText("Заявка №" + request.getId());
+        detailClient.setText(request.getClientName());
+        detailContacts.setText(client == null ? "—"
+                : client.getPhone() + (client.getEmail() == null ? "" : "\n" + client.getEmail()));
+        detailDevice.setText(request.getDeviceType());
+        detailStatus.setText(request.getStatus().getDisplayName());
+        detailPriority.setText(request.getPriority().getDisplayName());
+        detailCost.setText(String.format(RU, "%,.2f ₽", request.getCost()));
+        detailCreated.setText(request.getCreatedAt() == null ? "—" : request.getCreatedAt().format(DATE_TIME));
+        detailCompleted.setText(request.getCompletedAt() == null ? "—" : request.getCompletedAt().format(DATE_TIME));
+        detailDescription.setText(request.getProblemDescription());
+    }
+
+    // ===================================================================== меню
 
     @FXML
     private void onAbout() {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION,
-                "Система компьютерного сервиса — КР2 (JavaFX-клиент).\n"
-                        + "Работает с той же базой данных PostgreSQL, что и консольное приложение КР1.",
-                ButtonType.OK);
-        alert.setHeaderText(null);
-        alert.showAndWait();
+        Ui.info(owner(), "Система компьютерного сервиса  (JavaFX).\n"
+                + "Работает с той же базой PostgreSQL, что и консольное приложение КР1,\n"
+                + "через собственное JDBC-подключение (без REST API).");
     }
 
     @FXML
@@ -403,18 +692,57 @@ public class MainController {
         Platform.exit();
     }
 
-    // ---------------- Вспомогательные диалоги ----------------
+    // ===================================================================== вспомогательное
 
-    private void showError(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR, message, ButtonType.OK);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.showAndWait();
+    /**
+     * Единый способ выполнить работу с БД/файлом в фоне: показывает индикатор занятости,
+     * по завершении возвращает результат в UI-поток. Счётчик нужен, потому что операций
+     * может быть несколько одновременно (например, три загрузки при обновлении).
+     */
+    private <T> void async(Callable<T> work, Consumer<T> onSuccess, Consumer<Throwable> onFailure) {
+        busyCount++;
+        busyBar.setVisible(true);
+        FxTasks.run(work,
+                result -> {
+                    finishBusy();
+                    onSuccess.accept(result);
+                },
+                error -> {
+                    finishBusy();
+                    onFailure.accept(error);
+                });
     }
 
-    private void showWarning(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, message, ButtonType.OK);
-        alert.setHeaderText(null);
-        alert.showAndWait();
+    private void finishBusy() {
+        busyCount--;
+        busyBar.setVisible(busyCount > 0);
+    }
+
+    private void fail(Throwable error) {
+        statusLabel.setText("Ошибка: операция не выполнена");
+        Ui.error(owner(), error);
+    }
+
+    private Window owner() {
+        return requestsTable.getScene() == null ? null : requestsTable.getScene().getWindow();
+    }
+
+    private static <T> Integer selectedId(TableView<T> table, ToIntFunction<T> idOf) {
+        T selected = table.getSelectionModel().getSelectedItem();
+        return selected == null ? null : idOf.applyAsInt(selected);
+    }
+
+    /** После перезагрузки списка возвращает выделение на ту же запись (по id), если она осталась. */
+    private static <T> void reselect(TableView<T> table, ToIntFunction<T> idOf, Integer id) {
+        if (id == null) {
+            return;
+        }
+        for (T item : table.getItems()) {
+            if (idOf.applyAsInt(item) == id) {
+                table.getSelectionModel().select(item);
+                table.scrollTo(item);
+                return;
+            }
+        }
     }
 }

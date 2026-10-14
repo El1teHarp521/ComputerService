@@ -1,0 +1,11 @@
+# результат сборки
+target/
+dependency-reduced-pom.xml
+
+# IDE и системные файлы
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+

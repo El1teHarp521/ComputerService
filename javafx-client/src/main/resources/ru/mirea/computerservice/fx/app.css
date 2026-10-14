@@ -1,34 +1,21 @@
-/* Общий фон и шрифт главного окна */
+/* ===== Общие стили главного окна ===== */
 .root-pane {
-    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-family: "Segoe UI", "Roboto", "DejaVu Sans", sans-serif;
+    -fx-font-size: 13px;
     -fx-background-color: #f4f6f8;
 }
 
-/* Панель с поиском и фильтрами под меню */
+/* Панель поиска и фильтров под меню */
 .toolbar {
-    -fx-background-color: #eef1f4;
-    -fx-padding: 8;
-    -fx-spacing: 8;
+    -fx-background-color: #e9edf1;
+    -fx-padding: 10 12 10 12;
+    -fx-border-color: #d0d7de;
+    -fx-border-width: 0 0 1 0;
 }
 
-/* Таблицы заявок и клиентов */
-.table-view {
-    -fx-background-color: white;
-    -fx-font-size: 13px;
-}
-
-.table-view .column-header-background {
-    -fx-background-color: #2c3e50;
-}
-
-.table-view .column-header .label {
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-}
-
-/* Панель с кнопками Добавить/Изменить/Удалить под таблицей */
-.actions-bar {
-    -fx-background-color: #eef1f4;
+/* ===== Кнопки ===== */
+.button {
+    -fx-cursor: hand;
 }
 
 .btn-primary {
@@ -41,6 +28,10 @@
     -fx-background-color: #388e3c;
 }
 
+.btn-primary:disabled {
+    -fx-background-color: #a5c8a7;
+}
+
 .btn-danger {
     -fx-background-color: #c62828;
     -fx-text-fill: white;
@@ -50,9 +41,119 @@
     -fx-background-color: #d32f2f;
 }
 
-/* Диалоговые окна добавления/редактирования */
+.btn-danger:disabled {
+    -fx-background-color: #e0a5a5;
+}
+
+/* ===== Таблицы ===== */
+.table-view {
+    -fx-background-color: white;
+    -fx-font-size: 13px;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #2c3e50;
+}
+
+.table-view .column-header,
+.table-view .filler {
+    -fx-background-color: #2c3e50;
+    -fx-size: 32px;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+/* Числовые колонки выравниваются вправо */
+.numeric-column {
+    -fx-alignment: CENTER-RIGHT;
+}
+
+/* Раскраска строк по состоянию заявки */
+.table-row-cell.row-done .table-cell {
+    -fx-text-fill: #2e7d32;
+}
+
+.table-row-cell.row-cancelled .table-cell {
+    -fx-text-fill: #9aa3ad;
+}
+
+.table-row-cell.row-urgent .table-cell {
+    -fx-text-fill: #c62828;
+    -fx-font-weight: bold;
+}
+
+/* Выбранная строка: синий фон и белый текст независимо от того, в фокусе ли таблица
+   (иначе встроенная тема красит невыбранную по фокусу строку в светло-серый, и белый текст не читается).
+   Правила должны идти ПОСЛЕ правил раскраски выше. */
+.table-row-cell:filled:selected {
+    -fx-background-color: #3b7dd8;
+}
+
+.table-row-cell:filled:selected .table-cell {
+    -fx-text-fill: white;
+}
+
+/* ===== Панели ===== */
+.actions-bar {
+    -fx-background-color: #e9edf1;
+    -fx-border-color: #d0d7de;
+    -fx-border-width: 1 0 0 0;
+}
+
+.status-bar {
+    -fx-background-color: #dfe4ea;
+    -fx-border-color: #c3cbd3;
+    -fx-border-width: 1 0 0 0;
+}
+
+.details-pane {
+    -fx-background-color: white;
+    -fx-border-color: #d0d7de;
+    -fx-border-width: 0 0 0 1;
+}
+
+.stats-pane {
+    -fx-background-color: white;
+}
+
+.section-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+.detail-heading {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+
+.detail-caption {
+    -fx-text-fill: #6b7683;
+    -fx-font-size: 12px;
+}
+
+.muted {
+    -fx-text-fill: #6b7683;
+}
+
+.stat-name {
+    -fx-text-fill: #44505c;
+}
+
+.stat-value {
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-text-fill: #1f2d3a;
+}
+
+/* ===== Диалоговые формы ===== */
 .dialog-pane {
     -fx-background-color: white;
+    -fx-font-family: "Segoe UI", "Roboto", "DejaVu Sans", sans-serif;
+    -fx-font-size: 13px;
 }
 
 .dialog-title {
@@ -60,7 +161,7 @@
     -fx-font-weight: bold;
 }
 
-/* Сообщение об ошибке валидации в форме */
+/* ===== Ошибки и предупреждения ===== */
 .error-label {
     -fx-text-fill: #c62828;
     -fx-font-weight: bold;

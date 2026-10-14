@@ -113,3 +113,16 @@ mvn exec:java
 - Слои: Console UI (Main) → Service → Repository/JDBC → PostgreSQL
 - PreparedStatement везде, try-with-resources, никакой конкатенации SQL
 - PRIMARY KEY, FOREIGN KEY, NOT NULL, UNIQUE, CHECK — в schema.sql
+
+---
+
+## КР2 — JavaFX-клиент
+
+Графическое приложение лежит в папке [`javafx-client/`](javafx-client/README.md). Оно работает с той же базой
+данных, что и это консольное приложение (КР1), через собственное JDBC-подключение.
+
+```
+ComputerService/
+├── pom.xml, src/, db/      КР1 — консольное приложение
+└── javafx-client/          КР2 — JavaFX (свой pom.xml, свои тесты, README.md и DEFENSE.md)
+```

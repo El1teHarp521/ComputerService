@@ -19,4 +19,10 @@ public interface RepairRequestRepository {
     List<RepairRequest> searchByDescription(String keyword);
 
     List<RepairRequest> searchByClientName(String namePart);
+
+    /** Поиск сразу по нескольким полям: описание неисправности, тип устройства, ФИО клиента. */
+    List<RepairRequest> searchAnyField(String keyword);
+
+    /** Все заявки одного клиента — для просмотра связанных данных. */
+    List<RepairRequest> findByClientId(int clientId);
 }

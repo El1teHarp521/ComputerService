@@ -1,0 +1,31 @@
+# PostgreSQL для КР1 и КР2 в одном контейнере.
+# При ПЕРВОМ запуске (пустой том) автоматически выполняются db/schema.sql и db/seed.sql —
+# получается та же база с тестовыми данными, что была в КР1.
+#
+#   Запуск:      docker compose up -d --wait
+#   Остановка:   docker compose down          (данные сохраняются в томе pgdata)
+#   Сброс БД:    docker compose down -v       (ВНИМАНИЕ: удаляет данные, схема создастся заново)
+#
+# Если порт 5432 занят контейнером pg-service из КР1, остановите его: docker stop pg-service
+services:
+  postgres:
+    image: postgres:16
+    container_name: computer-service-db
+    environment:
+      POSTGRES_DB: computer_service
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d computer_service"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:

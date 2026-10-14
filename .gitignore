@@ -1,9 +1,11 @@
+# результат сборки
 target/
-*.class
-.vscode/
+dependency-reduced-pom.xml
+
+# IDE и системные файлы
 .idea/
 *.iml
+.vscode/
 .DS_Store
-*.log
-export.xlsx
-repair_requests_report.xlsx
+Thumbs.db
+

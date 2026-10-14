@@ -25,13 +25,14 @@ public class ClientService {
         if (clientRepository.existsByPhone(phone)) {
             throw new BusinessException("Клиент с телефоном " + phone + " уже существует");
         }
+        // ПЕРЕДАЮТСЯ В КОНСТРУКТОР
         Client client = new Client(fullName, phone, email);
         return clientRepository.save(client);
     }
 
     public Client getById(int id) {
         return clientRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Клиент с ID " + id + " не найден"));
+                .orElseThrow(() -> new EntityNotFoundException("Клиент с ID " + id + " не найден")); // Если объект найден — он извлекается из Optional. Если нет — выбрасывается кастомное исключение.
     }
 
     public List<Client> getAll() {

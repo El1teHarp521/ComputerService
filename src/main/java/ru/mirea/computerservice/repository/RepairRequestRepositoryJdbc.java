@@ -16,7 +16,8 @@ import java.util.ArrayList; // Импорт ArrayList — для создани�
 import java.util.List; // Импорт List
 import java.util.Optional; // Импорт Optional
 
-public class RepairRequestRepositoryJdbc implements RepairRequestRepository { // Класс реализует интерфейс RepairRequestRepository
+public class RepairRequestRepositoryJdbc implements RepairRequestRepository { // Класс реализует интерфейс
+                                                                              // RepairRequestRepository
 
     private static final String SELECT_BASE = // Константа — базовый SQL-запрос для выборки заявок
             "SELECT r.*, c.full_name AS client_name FROM repair_requests r " + // Выбираем все поля заявки и имя клиента
@@ -24,10 +25,11 @@ public class RepairRequestRepositoryJdbc implements RepairRequestRepository { //
 
     @Override
     public RepairRequest save(RepairRequest request) { // Метод сохранения новой заявки
-        String sql = "INSERT INTO repair_requests (client_id, device_type, problem_description, status, priority, cost) " + // SQL-запрос на вставку
+        String sql = "INSERT INTO repair_requests (client_id, device_type, problem_description, status, priority, cost) "
+                + // SQL-запрос на вставку
                 "VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at"; // Возвращаем id и created_at
         try (Connection conn = DatabaseManager.getConnection(); // Открываем соединение (автоматически закроется)
-             PreparedStatement ps = conn.prepareStatement(sql)) { // Создаем PreparedStatement из SQL
+                PreparedStatement ps = conn.prepareStatement(sql)) { // Создаем PreparedStatement из SQL
             ps.setInt(1, request.getClientId()); // Подставляем client_id в первый ?
             ps.setString(2, request.getDeviceType()); // Подставляем device_type во второй ?
             ps.setString(3, request.getProblemDescription()); // Подставляем problem_description в третий ?
@@ -37,12 +39,14 @@ public class RepairRequestRepositoryJdbc implements RepairRequestRepository { //
             try (ResultSet rs = ps.executeQuery()) { // Выполняем запрос, получаем ResultSet
                 if (rs.next()) { // Если есть результат (строка)
                     request.setId(rs.getInt("id")); // Устанавливаем сгенерированный id
-                    request.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime()); // Устанавливаем дату создания
+                    request.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime()); // Устанавливаем дату
+                                                                                           // создания
                 }
             }
             return request; // Возвращаем обновленный объект
         } catch (SQLException e) { // Если произошла ошибка SQL
-            throw new DatabaseException("Ошибка при создании заявки: " + e.getMessage(), e); // Оборачиваем в DatabaseException
+            throw new DatabaseException("Ошибка при создании заявки: " + e.getMessage(), e); // Оборачиваем в
+                                                                                             // DatabaseException
         }
     }
 
@@ -50,7 +54,7 @@ public class RepairRequestRepositoryJdbc implements RepairRequestRepository { //
     public Optional<RepairRequest> findById(int id) { // Метод поиска заявки по id
         String sql = SELECT_BASE + "WHERE r.id = ?"; // Базовый запрос + условие WHERE
         try (Connection conn = DatabaseManager.getConnection(); // Открываем соединение
-             PreparedStatement ps = conn.prepareStatement(sql)) { // Создаем PreparedStatement
+                PreparedStatement ps = conn.prepareStatement(sql)) { // Создаем PreparedStatement
             ps.setInt(1, id); // Подставляем id в первый ?
             try (ResultSet rs = ps.executeQuery()) { // Выполняем запрос
                 if (rs.next()) { // Если нашли строку
@@ -68,23 +72,25 @@ public class RepairRequestRepositoryJdbc implements RepairRequestRepository { //
         String sql = SELECT_BASE + "ORDER BY r.id"; // Базовый запрос + сортировка по id
         List<RepairRequest> result = new ArrayList<>(); // Создаем пустой список
         try (Connection conn = DatabaseManager.getConnection(); // Открываем соединение
-             PreparedStatement ps = conn.prepareStatement(sql); // Создаем PreparedStatement
-             ResultSet rs = ps.executeQuery()) { // Сразу выполняем запрос (executeQuery для SELECT)
+                PreparedStatement ps = conn.prepareStatement(sql); // Создаем PreparedStatement
+                ResultSet rs = ps.executeQuery()) { // Сразу выполняем запрос (executeQuery для SELECT)
             while (rs.next()) { // Пока есть строки
                 result.add(mapRow(rs)); // Добавляем заявку в список
             }
             return result; // Возвращаем список
         } catch (SQLException e) { // При ошибке SQL
-            throw new DatabaseException("Ошибка при получении заявок: " + e.getMessage(), e); // Бросаем DatabaseException
+            throw new DatabaseException("Ошибка при получении заявок: " + e.getMessage(), e); // Бросаем
+                                                                                              // DatabaseException
         }
     }
 
     @Override
     public void update(RepairRequest request) { // Метод обновления заявки
-        String sql = "UPDATE repair_requests SET device_type = ?, problem_description = ?, " + // SQL-запрос на обновление
+        String sql = "UPDATE repair_requests SET device_type = ?, problem_description = ?, " + // SQL-запрос на
+                                                                                               // обновление
                 "status = ?, priority = ?, cost = ?, completed_at = ? WHERE id = ?"; // Обновляем поля и completed_at
         try (Connection conn = DatabaseManager.getConnection(); // Открываем соединение
-             PreparedStatement ps = conn.prepareStatement(sql)) { // Создаем PreparedStatement
+                PreparedStatement ps = conn.prepareStatement(sql)) { // Создаем PreparedStatement
             ps.setString(1, request.getDeviceType()); // Подставляем device_type
             ps.setString(2, request.getProblemDescription()); // Подставляем problem_description
             ps.setString(3, request.getStatus().name()); // Подставляем имя enum статуса
@@ -98,7 +104,8 @@ public class RepairRequestRepositoryJdbc implements RepairRequestRepository { //
             ps.setInt(7, request.getId()); // Подставляем id в WHERE
             ps.executeUpdate(); // Выполняем UPDATE (executeUpdate для INSERT/UPDATE/DELETE)
         } catch (SQLException e) { // При ошибке SQL
-            throw new DatabaseException("Ошибка при обновлении заявки: " + e.getMessage(), e); // Бросаем DatabaseException
+            throw new DatabaseException("Ошибка при обновлении заявки: " + e.getMessage(), e); // Бросаем
+                                                                                               // DatabaseException
         }
     }
 
@@ -106,30 +113,33 @@ public class RepairRequestRepositoryJdbc implements RepairRequestRepository { //
     public void delete(int id) { // Метод удаления заявки
         String sql = "DELETE FROM repair_requests WHERE id = ?"; // SQL-запрос на удаление
         try (Connection conn = DatabaseManager.getConnection(); // Открываем соединение
-             PreparedStatement ps = conn.prepareStatement(sql)) { // Создаем PreparedStatement
+                PreparedStatement ps = conn.prepareStatement(sql)) { // Создаем PreparedStatement
             ps.setInt(1, id); // Подставляем id
             ps.executeUpdate(); // Выполняем DELETE
         } catch (SQLException e) { // При ошибке SQL
-            throw new DatabaseException("Ошибка при удалении заявки: " + e.getMessage(), e); // Бросаем DatabaseException
+            throw new DatabaseException("Ошибка при удалении заявки: " + e.getMessage(), e); // Бросаем
+                                                                                             // DatabaseException
         }
     }
 
     @Override
     public List<RepairRequest> searchByDescription(String keyword) { // Метод поиска заявок по описанию
-        String sql = SELECT_BASE + "WHERE LOWER(r.problem_description) LIKE LOWER(?) ORDER BY r.id"; // SQL: поиск без учета регистра
+        String sql = SELECT_BASE + "WHERE LOWER(r.problem_description) LIKE LOWER(?) ORDER BY r.id"; // SQL: поиск без
+                                                                                                     // учета регистра
         return searchWithLike(sql, keyword); // Делегируем в общий метод searchWithLike
     }
 
     @Override
     public List<RepairRequest> searchByClientName(String namePart) { // Метод поиска заявок по имени клиента
-        String sql = SELECT_BASE + "WHERE LOWER(c.full_name) LIKE LOWER(?) ORDER BY r.id"; // SQL: поиск по имени клиента
+        String sql = SELECT_BASE + "WHERE LOWER(c.full_name) LIKE LOWER(?) ORDER BY r.id"; // SQL: поиск по имени
+                                                                                           // клиента
         return searchWithLike(sql, namePart); // Делегируем в общий метод searchWithLike
     }
 
     private List<RepairRequest> searchWithLike(String sql, String keyword) { // Вспомогательный метод для поиска по LIKE
         List<RepairRequest> result = new ArrayList<>(); // Создаем пустой список
         try (Connection conn = DatabaseManager.getConnection(); // Открываем соединение
-             PreparedStatement ps = conn.prepareStatement(sql)) { // Создаем PreparedStatement
+                PreparedStatement ps = conn.prepareStatement(sql)) { // Создаем PreparedStatement
             ps.setString(1, "%" + keyword + "%"); // Оборачиваем в % для поиска по подстроке
             try (ResultSet rs = ps.executeQuery()) { // Выполняем запрос
                 while (rs.next()) { // Пока есть строки
@@ -142,7 +152,8 @@ public class RepairRequestRepositoryJdbc implements RepairRequestRepository { //
         }
     }
 
-    private RepairRequest mapRow(ResultSet rs) throws SQLException { // Вспомогательный метод: ResultSet -> RepairRequest
+    private RepairRequest mapRow(ResultSet rs) throws SQLException { // Вспомогательный метод: ResultSet ->
+                                                                     // RepairRequest
         RepairRequest request = new RepairRequest(); // Создаем пустую заявку
         request.setId(rs.getInt("id")); // Устанавливаем id
         request.setClientId(rs.getInt("client_id")); // Устанавливаем client_id
@@ -153,9 +164,11 @@ public class RepairRequestRepositoryJdbc implements RepairRequestRepository { //
         request.setPriority(Priority.valueOf(rs.getString("priority"))); // Строка из БД -> enum Priority
         request.setCost(rs.getBigDecimal("cost")); // Устанавливаем cost
         Timestamp createdAt = rs.getTimestamp("created_at"); // Получаем Timestamp created_at
-        if (createdAt != null) request.setCreatedAt(createdAt.toLocalDateTime()); // Если не null — преобразуем
+        if (createdAt != null)
+            request.setCreatedAt(createdAt.toLocalDateTime()); // Если не null — преобразуем
         Timestamp completedAt = rs.getTimestamp("completed_at"); // Получаем Timestamp completed_at
-        if (completedAt != null) request.setCompletedAt(completedAt.toLocalDateTime()); // Если не null — преобразуем
+        if (completedAt != null)
+            request.setCompletedAt(completedAt.toLocalDateTime()); // Если не null — преобразуем
         return request; // Возвращаем заполненную заявку
     }
 }

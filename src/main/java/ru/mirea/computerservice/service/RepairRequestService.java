@@ -29,6 +29,7 @@ public class RepairRequestService { // Класс сервиса — бизне�
     }
 
     public RepairRequest create(int clientId, String deviceType, String description, Priority priority) { // Метод создания заявки
+        // Сервис заявок обращается к сервису клиентов и достает данные клиента:
         Client client = clientService.getById(clientId); // EntityNotFoundException, если клиента нет // Проверяем существование клиента
         if (deviceType == null || deviceType.isBlank()) { // Проверка: тип устройства не пустой
             throw new BusinessException("Тип устройства обязателен для заполнения"); // Бросаем BusinessException
@@ -36,12 +37,15 @@ public class RepairRequestService { // Класс сервиса — бизне�
         if (description == null || description.isBlank()) { // Проверка: описание не пустое
             throw new BusinessException("Описание неисправности обязательно для заполнения"); // Бросаем BusinessException
         }
+        // Создает заявку, привязывая ее к ID клиента
         RepairRequest request = new RepairRequest(client.getId(), deviceType, description, priority); // Создаем объект заявки
+        // Подтягивает ФИО клиента прямо в объект заявки:
         request.setClientName(client.getFullName()); // Устанавливаем имя клиента (денормализация для вывода)
+        // Отправляет готовую связанную сущность в базу
         return repository.save(request); // Сохраняем через репозиторий и возвращаем результат
     }
 
-    public RepairRequest getById(int id) { // Метод получения заявки по id
+    public RepairRequest getById(int id) { // Метод получения заявки по id (Если объект найден — он извлекается из Optional. Если нет — выбрасывается кастомное исключение.)
         return repository.findById(id) // Ищем заявку в репозитории
                 .orElseThrow(() -> new EntityNotFoundException("Заявка с ID " + id + " не найдена")); // Если пусто — бросаем исключение
     }
@@ -51,7 +55,7 @@ public class RepairRequestService { // Класс сервиса — бизне�
     }
 
     public void changeStatus(int id, RequestStatus newStatus) { // Метод изменения статуса заявки
-        RepairRequest request = getById(id); // Получаем заявку (или исключение, если нет)
+        RepairRequest request = getById(id); // Получаем заявку (или исключение, если нет)(Если объект найден — он извлекается из Optional. Если нет — выбрасывается кастомное исключение.)
         if (!request.canTransitionTo(newStatus)) { // Проверяем бизнес-правило: можно ли перейти в новый статус
             throw new BusinessException("Нельзя изменить статус завершённой или отменённой заявки"); // Бросаем BusinessException
         }

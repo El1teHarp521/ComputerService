@@ -1,13 +1,15 @@
 package ru.mirea.computerservice.fx.controller;
 
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
-import ru.mirea.computerservice.exception.BusinessException;
+import ru.mirea.computerservice.fx.util.FxTasks;
 import ru.mirea.computerservice.model.Client;
 import ru.mirea.computerservice.model.Priority;
 import ru.mirea.computerservice.model.RepairRequest;
@@ -18,34 +20,32 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * Контроллер диалогового окна "Заявка на ремонт".
- * Клиент и статус выбираются из ComboBox, а не вводятся вручную —
- * это требование ТЗ про работу со связанными сущностями через интерфейс,
- * а не через ручной ввод ID.
+ * Контроллер окна «Заявка на ремонт». Клиент выбирается из выпадающего списка существующих
+ * клиентов (ComboBox), а не вводится числом-ID — это требование ТЗ про связанные сущности.
  */
 public class RequestFormDialogController {
 
-    @FXML
-    private Label titleLabel;
-    @FXML
-    private ComboBox<Client> clientCombo;
-    @FXML
-    private TextField deviceTypeField;
-    @FXML
-    private TextArea descriptionArea;
-    @FXML
-    private ComboBox<Priority> priorityCombo;
-    @FXML
-    private ComboBox<RequestStatus> statusCombo;
-    @FXML
-    private TextField costField;
-    @FXML
-    private Label errorLabel;
+    @FXML private Label titleLabel;
+    @FXML private ComboBox<Client> clientCombo;
+    @FXML private TextField deviceTypeField;
+    @FXML private TextArea descriptionArea;
+    @FXML private ComboBox<Priority> priorityCombo;
+    @FXML private ComboBox<RequestStatus> statusCombo;
+    @FXML private TextField costField;
+    @FXML private Label errorLabel;
+    @FXML private Button saveButton;
+    @FXML private Button cancelButton;
 
     private RepairRequestService requestService;
     private Stage dialogStage;
-    private RepairRequest editingRequest; // null => форма работает в режиме создания
-    private boolean saved = false;
+    private RepairRequest editingRequest; // null => режим создания
+    private boolean saved;
+
+    @FXML
+    private void initialize() {
+        saveButton.setDefaultButton(true);
+        cancelButton.setCancelButton(true);
+    }
 
     public void setRequestService(RepairRequestService requestService) {
         this.requestService = requestService;
@@ -55,10 +55,7 @@ public class RequestFormDialogController {
         this.dialogStage = dialogStage;
     }
 
-    /**
-     * Заполняет выпадающие списки. Вызывается MainController ещё до показа окна,
-     * сразу после загрузки FXML — чтобы к моменту открытия формы списки уже были готовы.
-     */
+    /** Заполняет выпадающие списки; вызывается до показа окна. */
     public void initLookups(List<Client> clients) {
         clientCombo.setItems(FXCollections.observableArrayList(clients));
         priorityCombo.setItems(FXCollections.observableArrayList(Priority.values()));
@@ -66,9 +63,8 @@ public class RequestFormDialogController {
 
         priorityCombo.getSelectionModel().select(Priority.NORMAL);
         statusCombo.getSelectionModel().select(RequestStatus.NEW);
-        // При создании новая заявка всегда получает статус NEW — его смена
-        // станет доступна только после сохранения, через режим редактирования
-        statusCombo.setDisable(true);
+        statusCombo.setDisable(true); // новая заявка всегда создаётся со статусом «Принята»
+        costField.setText("0");
     }
 
     /** Переключает форму в режим редактирования существующей заявки. */
@@ -82,14 +78,13 @@ public class RequestFormDialogController {
                 break;
             }
         }
-        // Заявку нельзя переназначить другому клиенту задним числом — поле заблокировано
-        clientCombo.setDisable(true);
+        clientCombo.setDisable(true); // заявку нельзя «перевесить» на другого клиента
 
         deviceTypeField.setText(request.getDeviceType());
         descriptionArea.setText(request.getProblemDescription());
         priorityCombo.getSelectionModel().select(request.getPriority());
         statusCombo.getSelectionModel().select(request.getStatus());
-        statusCombo.setDisable(false); // при редактировании статус менять можно
+        statusCombo.setDisable(false);
         costField.setText(request.getCost() == null ? "0" : request.getCost().toPlainString());
     }
 
@@ -99,39 +94,51 @@ public class RequestFormDialogController {
 
     @FXML
     private void onSave() {
-        try {
-            Client client = clientCombo.getValue();
-            if (client == null) {
-                showError("Выберите клиента из списка");
-                return;
-            }
-            String deviceType = deviceTypeField.getText().trim();
-            String description = descriptionArea.getText().trim();
-            Priority priority = priorityCombo.getValue();
-            BigDecimal cost = parseCost(costField.getText());
+        hideError();
 
-            if (editingRequest == null) {
-                requestService.create(client.getId(), deviceType, description, priority);
-            } else {
-                RequestStatus status = statusCombo.getValue();
-                requestService.updateDetails(editingRequest.getId(), deviceType, description,
-                        priority, status, cost);
-            }
-            saved = true;
-            dialogStage.close();
-        } catch (BusinessException e) {
-            // Например: "Нельзя изменить статус завершённой или отменённой заявки"
-            showError(e.getMessage());
-        } catch (NumberFormatException e) {
-            showError("Стоимость должна быть числом, например 1500.00");
-        } catch (Exception e) {
-            showError("Непредвиденная ошибка: " + e.getMessage());
+        Client client = clientCombo.getValue();
+        if (client == null) {
+            showError("Клиент: выберите клиента из списка");
+            return;
         }
+        BigDecimal cost;
+        try {
+            cost = parseCost(costField.getText());
+        } catch (NumberFormatException e) {
+            showError("Стоимость: введите число, например 1500 или 1500.50");
+            return;
+        }
+
+        String deviceType = deviceTypeField.getText();
+        String description = descriptionArea.getText();
+        Priority priority = priorityCombo.getValue();
+        RequestStatus status = statusCombo.getValue();
+        RepairRequest editing = editingRequest;
+
+        saveButton.setDisable(true);
+        FxTasks.run(() -> {
+                    if (editing == null) {
+                        requestService.create(client.getId(), deviceType, description, priority, cost);
+                    } else {
+                        requestService.updateDetails(editing.getId(), deviceType, description,
+                                priority, status, cost);
+                    }
+                    return null;
+                },
+                result -> {
+                    saved = true;
+                    dialogStage.close();
+                },
+                error -> {
+                    saveButton.setDisable(false);
+                    showError(FxTasks.friendly(error));
+                });
     }
 
+    /** Пустое поле считается нулём; допускаются запятая и пробелы-разделители тысяч. */
     private BigDecimal parseCost(String raw) {
-        String normalized = (raw == null || raw.isBlank()) ? "0" : raw.trim().replace(",", ".");
-        return new BigDecimal(normalized);
+        String normalized = raw == null ? "" : raw.trim().replace(",", ".").replaceAll("[\\s\u00A0]", "");
+        return normalized.isEmpty() ? BigDecimal.ZERO : new BigDecimal(normalized);
     }
 
     @FXML
@@ -143,5 +150,14 @@ public class RequestFormDialogController {
         errorLabel.setText(message);
         errorLabel.setVisible(true);
         errorLabel.setManaged(true);
+        // окно создано с фиксированным размером: после появления строки ошибки подгоняем его,
+        // иначе длинное сообщение обрезается многоточием
+        Platform.runLater(dialogStage::sizeToScene);
+    }
+
+    private void hideError() {
+        errorLabel.setVisible(false);
+        errorLabel.setManaged(false);
+        Platform.runLater(dialogStage::sizeToScene);
     }
 }

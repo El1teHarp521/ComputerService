@@ -26,14 +26,17 @@
         </columnConstraints>
 
         <Label text="Клиент:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-        <ComboBox fx:id="clientCombo" GridPane.rowIndex="0" GridPane.columnIndex="1" maxWidth="Infinity"/>
+        <ComboBox fx:id="clientCombo" GridPane.rowIndex="0" GridPane.columnIndex="1" maxWidth="Infinity"
+                  promptText="Выберите клиента"/>
 
         <Label text="Тип устройства:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-        <TextField fx:id="deviceTypeField" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+        <TextField fx:id="deviceTypeField" GridPane.rowIndex="1" GridPane.columnIndex="1"
+                   promptText="Например: Ноутбук, ПК, Принтер"/>
 
         <Label text="Описание:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
         <TextArea fx:id="descriptionArea" GridPane.rowIndex="2" GridPane.columnIndex="1"
-                  prefRowCount="3" wrapText="true"/>
+                  prefRowCount="3" wrapText="true"
+                  promptText="Что случилось с устройством"/>
 
         <Label text="Приоритет:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
         <ComboBox fx:id="priorityCombo" GridPane.rowIndex="3" GridPane.columnIndex="1" maxWidth="Infinity"/>
@@ -42,14 +45,16 @@
         <ComboBox fx:id="statusCombo" GridPane.rowIndex="4" GridPane.columnIndex="1" maxWidth="Infinity"/>
 
         <Label text="Стоимость:" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
-        <TextField fx:id="costField" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+        <TextField fx:id="costField" GridPane.rowIndex="5" GridPane.columnIndex="1"
+                   promptText="₽, например 1500 или 1500.50"/>
     </GridPane>
 
     <!-- Скрыт по умолчанию (visible/managed=false), показывается только при ошибке валидации -->
-    <Label fx:id="errorLabel" styleClass="error-label" wrapText="true" managed="false" visible="false"/>
+    <Label fx:id="errorLabel" styleClass="error-label" wrapText="true" minHeight="-Infinity"
+           maxWidth="Infinity" managed="false" visible="false"/>
 
     <HBox spacing="10" alignment="CENTER_RIGHT">
-        <Button text="Отмена" onAction="#onCancel"/>
-        <Button text="Сохранить" onAction="#onSave" styleClass="btn-primary"/>
+        <Button fx:id="cancelButton" text="Отмена" onAction="#onCancel"/>
+        <Button fx:id="saveButton" text="Сохранить" onAction="#onSave" styleClass="btn-primary"/>
     </HBox>
 </VBox>

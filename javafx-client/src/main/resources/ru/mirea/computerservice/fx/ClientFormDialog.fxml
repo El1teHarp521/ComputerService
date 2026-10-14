@@ -20,19 +20,23 @@
         </columnConstraints>
 
         <Label text="ФИО:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-        <TextField fx:id="fullNameField" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+        <TextField fx:id="fullNameField" GridPane.rowIndex="0" GridPane.columnIndex="1"
+                   promptText="Фамилия Имя Отчество"/>
 
         <Label text="Телефон:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-        <TextField fx:id="phoneField" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+        <TextField fx:id="phoneField" GridPane.rowIndex="1" GridPane.columnIndex="1"
+                   promptText="+7 900 111-22-33"/>
 
         <Label text="Email:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-        <TextField fx:id="emailField" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+        <TextField fx:id="emailField" GridPane.rowIndex="2" GridPane.columnIndex="1"
+                   promptText="необязательно"/>
     </GridPane>
 
-    <Label fx:id="errorLabel" styleClass="error-label" wrapText="true" managed="false" visible="false"/>
+    <Label fx:id="errorLabel" styleClass="error-label" wrapText="true" minHeight="-Infinity"
+           maxWidth="Infinity" managed="false" visible="false"/>
 
     <HBox spacing="10" alignment="CENTER_RIGHT">
-        <Button text="Отмена" onAction="#onCancel"/>
-        <Button text="Сохранить" onAction="#onSave" styleClass="btn-primary"/>
+        <Button fx:id="cancelButton" text="Отмена" onAction="#onCancel"/>
+        <Button fx:id="saveButton" text="Сохранить" onAction="#onSave" styleClass="btn-primary"/>
     </HBox>
 </VBox>

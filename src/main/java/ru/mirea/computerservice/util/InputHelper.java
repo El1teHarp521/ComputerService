@@ -13,7 +13,8 @@ public final class InputHelper { // Класс-утилита (final — нел�
             System.out.print(prompt); // Выводим приглашение к вводу
             String line = scanner.nextLine().trim(); // Читаем строку и убираем пробелы по краям
             try {
-                return Integer.parseInt(line); // Пытаемся преобразовать строку в int и вернуть
+                return Integer.parseInt(line); // Пытаемся преобразовать строку в int и вернуть 
+                // //try-catch используется для защиты от неверного пользовательского ввода, чтобы программа не падала при вводе букв вместо цифр
             } catch (NumberFormatException e) { // Если преобразование не удалось
                 System.out.println("Ошибка: введите целое число."); // Сообщаем об ошибке и повторяем цикл
             }
