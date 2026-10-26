@@ -7,85 +7,60 @@
     <groupId>ru.mirea</groupId>
     <artifactId>computer-service-javafx</artifactId>
     <version>1.0.0</version>
-    <packaging>jar</packaging>
     <name>Computer Service JavaFX Client (KR2)</name>
 
     <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.release>21</maven.compiler.release>
-        <javafx.version>21.0.8</javafx.version>
-        <postgresql.version>42.7.3</postgresql.version>
-        <poi.version>5.2.5</poi.version>
-        <junit.version>5.13.4</junit.version>
+        <javafx.version>21.0.2</javafx.version>
     </properties>
 
     <dependencies>
-        <!-- Элементы интерфейса: кнопки, таблицы, диалоги, диаграммы -->
+        <!-- JavaFX компоненты -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
         </dependency>
-        <!-- Загрузка интерфейса из FXML и связь с контроллерами -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
         </dependency>
 
-        <!-- СОБСТВЕННОЕ JDBC-подключение к PostgreSQL из КР1 (без REST API и Spring) -->
+        <!-- JDBC-драйвер PostgreSQL -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>${postgresql.version}</version>
+            <version>42.7.3</version>
         </dependency>
 
-        <!-- Экспорт в Excel (.xlsx) -->
+        <!-- Экспорт в Excel -->
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
-            <version>${poi.version}</version>
+            <version>5.2.5</version>
         </dependency>
 
-        <!-- Автотесты сервисного слоя (запускаются командой mvn test, база данных не нужна) -->
+        <!-- Отправка писем по протоколу SMTP -->
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>jakarta.mail</artifactId>
+            <version>2.0.3</version>
+        </dependency>
+
+        <!-- Тестирование JUnit 5 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>${junit.version}</version>
+            <version>5.10.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.0</version>
-                <configuration>
-                    <release>${maven.compiler.release}</release>
-                    <parameters>true</parameters>
-                </configuration>
-            </plugin>
-            <!-- Копирует database.properties, FXML и CSS из src/main/resources в сборку -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.5.0</version>
-                <configuration>
-                    <encoding>UTF-8</encoding>
-                </configuration>
-            </plugin>
-            <!-- Запуск тестов в фазе test; module path выключен — проект не модульный -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.3</version>
-                <configuration>
-                    <useModulePath>false</useModulePath>
-                </configuration>
-            </plugin>
-            <!-- mvn javafx:run: запускает приложение с нужными модулями JavaFX -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>

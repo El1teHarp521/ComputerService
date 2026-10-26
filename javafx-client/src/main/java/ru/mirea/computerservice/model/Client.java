@@ -9,6 +9,7 @@ public class Client {
     private String fullName;
     private String phone;
     private String email;
+    private boolean emailConfirmed; // Флаг: подтверждена ли почта
     private LocalDateTime registeredAt;
 
     public Client() {
@@ -18,6 +19,7 @@ public class Client {
         this.fullName = fullName;
         this.phone = phone;
         this.email = email;
+        this.emailConfirmed = false; // По умолчанию почта не подтверждена!
     }
 
     public int getId() {
@@ -52,6 +54,14 @@ public class Client {
         this.email = email;
     }
 
+    public boolean isEmailConfirmed() {
+        return emailConfirmed;
+    }
+
+    public void setEmailConfirmed(boolean emailConfirmed) {
+        this.emailConfirmed = emailConfirmed;
+    }
+
     public LocalDateTime getRegisteredAt() {
         return registeredAt;
     }
@@ -73,9 +83,6 @@ public class Client {
         return Objects.hash(id);
     }
 
-    // В КР1 toString() был подробным (для консоли). Здесь он используется
-    // ComboBox-ом в форме заявки, где должно отображаться только имя —
-    // поэтому делаем toString() короче, чем в консольной версии.
     @Override
     public String toString() {
         return fullName + " (ID " + id + ")";

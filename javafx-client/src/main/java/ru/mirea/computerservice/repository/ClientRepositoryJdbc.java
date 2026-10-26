@@ -8,26 +8,32 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * JDBC-реализация репозитория клиентов. Весь SQL проекта живёт только в классах
- * *RepositoryJdbc; контроллеры JavaFX и сервисы SQL не содержат.
- * Везде PreparedStatement + try-with-resources, строки в запросы не склеиваются.
- */
 public class ClientRepositoryJdbc implements ClientRepository {
+
+    // Автоматическая миграция: при первом запуске добавляем колонку в PostgreSQL
+    static {
+        try (Connection conn = DatabaseManager.getConnection();
+             Statement st = conn.createStatement()) {
+            st.executeUpdate("ALTER TABLE clients ADD COLUMN IF NOT EXISTS email_confirmed BOOLEAN DEFAULT FALSE;");
+        } catch (SQLException ignored) {
+        }
+    }
 
     @Override
     public Client save(Client client) {
-        String sql = "INSERT INTO clients (full_name, phone, email) VALUES (?, ?, ?) RETURNING id, registered_at";
+        String sql = "INSERT INTO clients (full_name, phone, email, email_confirmed) VALUES (?, ?, ?, ?) RETURNING id, registered_at";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, client.getFullName());
             ps.setString(2, client.getPhone());
             ps.setString(3, client.getEmail());
+            ps.setBoolean(4, client.isEmailConfirmed());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     client.setId(rs.getInt("id"));
@@ -73,16 +79,29 @@ public class ClientRepositoryJdbc implements ClientRepository {
 
     @Override
     public void update(Client client) {
-        String sql = "UPDATE clients SET full_name = ?, phone = ?, email = ? WHERE id = ?";
+        String sql = "UPDATE clients SET full_name = ?, phone = ?, email = ?, email_confirmed = ? WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, client.getFullName());
             ps.setString(2, client.getPhone());
             ps.setString(3, client.getEmail());
-            ps.setInt(4, client.getId());
+            ps.setBoolean(4, client.isEmailConfirmed());
+            ps.setInt(5, client.getId());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new DatabaseException("Ошибка при обновлении клиента: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void confirmEmailByAddress(String email) {
+        String sql = "UPDATE clients SET email_confirmed = TRUE WHERE LOWER(email) = LOWER(?)";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new DatabaseException("Ошибка при подтверждении email: " + e.getMessage(), e);
         }
     }
 
@@ -131,8 +150,6 @@ public class ClientRepositoryJdbc implements ClientRepository {
         return exists("SELECT 1 FROM repair_requests WHERE client_id = ?", clientId);
     }
 
-    // ---------- вспомогательные методы, убирающие повторяющийся JDBC-код ----------
-
     private boolean exists(String sql, int clientId) {
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -163,6 +180,7 @@ public class ClientRepositoryJdbc implements ClientRepository {
         client.setFullName(rs.getString("full_name"));
         client.setPhone(rs.getString("phone"));
         client.setEmail(rs.getString("email"));
+        client.setEmailConfirmed(rs.getBoolean("email_confirmed"));
         Timestamp ts = rs.getTimestamp("registered_at");
         if (ts != null) client.setRegisteredAt(ts.toLocalDateTime());
         return client;

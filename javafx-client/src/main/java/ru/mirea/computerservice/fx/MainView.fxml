@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="ru.mirea.computerservice.fx.controller.MainController"
+            stylesheets="@app.css" styleClass="root-pane">
+
+    <top>
+        <VBox>
+            <MenuBar>
+                <Menu text="Файл">
+                    <MenuItem text="Экспорт текущей таблицы в Excel…" onAction="#onExport"/>
+                    <MenuItem text="Обновить данные" onAction="#onRefresh"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Выход" onAction="#onExit"/>
+                </Menu>
+                <Menu text="Вид">
+                    <MenuItem text="Статистика" onAction="#onShowStatistics"/>
+                </Menu>
+                <Menu text="Справка">
+                    <MenuItem text="О программе" onAction="#onAbout"/>
+                </Menu>
+            </MenuBar>
+
+            <VBox styleClass="toolbar" spacing="8">
+                <HBox fx:id="searchRow" spacing="8" alignment="CENTER_LEFT">
+                    <Label text="Поиск:" minWidth="-Infinity"/>
+                    <TextField fx:id="searchField" HBox.hgrow="ALWAYS" onAction="#onSearch"
+                               promptText="описание неисправности, устройство или ФИО клиента"/>
+                    <Button text="Найти" onAction="#onSearch" styleClass="btn-primary" minWidth="-Infinity"/>
+                    <Label text="Сортировка:" minWidth="-Infinity"/>
+                    <ComboBox fx:id="sortCombo" prefWidth="230" minWidth="-Infinity"/>
+                </HBox>
+                <HBox spacing="14" alignment="CENTER_LEFT">
+                    <HBox fx:id="filterGroup" spacing="8" alignment="CENTER_LEFT">
+                        <Label text="Статус:" minWidth="-Infinity"/>
+                        <ComboBox fx:id="statusFilterCombo" prefWidth="165" minWidth="-Infinity"/>
+                        <Label text="Приоритет:" minWidth="-Infinity"/>
+                        <ComboBox fx:id="priorityFilterCombo" prefWidth="145" minWidth="-Infinity"/>
+                        <Label text="Создана с:" minWidth="-Infinity"/>
+                        <DatePicker fx:id="dateFromPicker" prefWidth="125" minWidth="-Infinity"/>
+                        <Label text="по:" minWidth="-Infinity"/>
+                        <DatePicker fx:id="dateToPicker" prefWidth="125" minWidth="-Infinity"/>
+                        <Button text="Сбросить" onAction="#onResetFilter" minWidth="-Infinity"/>
+                    </HBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="Обновить" onAction="#onRefresh" minWidth="-Infinity"/>
+                    <Button text="Статистика" onAction="#onShowStatistics" minWidth="-Infinity"/>
+                    <Button text="Экспорт в Excel" onAction="#onExport" minWidth="-Infinity"/>
+                </HBox>
+            </VBox>
+        </VBox>
+    </top>
+
+    <center>
+        <TabPane fx:id="mainTabs" tabClosingPolicy="UNAVAILABLE">
+
+            <!-- ============ Заявки ============ -->
+            <Tab fx:id="requestsTab" text="Заявки">
+                <BorderPane>
+                    <center>
+                        <TableView fx:id="requestsTable">
+                            <columns>
+                                <TableColumn fx:id="colId" text="№" prefWidth="42" styleClass="numeric-column"/>
+                                <TableColumn fx:id="colClient" text="Клиент" prefWidth="150"/>
+                                <TableColumn fx:id="colDevice" text="Устройство" prefWidth="95"/>
+                                <TableColumn fx:id="colDescription" text="Описание неисправности" prefWidth="230"/>
+                                <TableColumn fx:id="colStatus" text="Статус" prefWidth="150"/>
+                                <TableColumn fx:id="colPriority" text="Приоритет" prefWidth="90"/>
+                                <TableColumn fx:id="colCost" text="Стоимость, ₽" prefWidth="115" styleClass="numeric-column"/>
+                                <TableColumn fx:id="colCreatedAt" text="Создана" prefWidth="148"/>
+                            </columns>
+                        </TableView>
+                    </center>
+
+                    <right>
+                        <VBox styleClass="details-pane" spacing="6" prefWidth="270" minWidth="250">
+                            <padding>
+                                <Insets top="12" right="12" bottom="12" left="12"/>
+                            </padding>
+                            <Label text="Сведения о заявке" styleClass="section-title"/>
+                            <Label fx:id="detailTitle" styleClass="detail-heading" wrapText="true" minHeight="-Infinity"/>
+
+                            <Label text="Клиент" styleClass="detail-caption"/>
+                            <Label fx:id="detailClient" wrapText="true" minHeight="-Infinity"/>
+                            <Label fx:id="detailContacts" wrapText="true" styleClass="muted" minHeight="-Infinity"/>
+
+                            <GridPane hgap="10" vgap="4">
+                                <columnConstraints>
+                                    <ColumnConstraints minWidth="80"/>
+                                    <ColumnConstraints hgrow="ALWAYS"/>
+                                </columnConstraints>
+                                <Label text="Устройство" styleClass="detail-caption" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                <Label fx:id="detailDevice" wrapText="true" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                                <Label text="Статус" styleClass="detail-caption" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                <Label fx:id="detailStatus" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                                <Label text="Приоритет" styleClass="detail-caption" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                <Label fx:id="detailPriority" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                                <Label text="Стоимость" styleClass="detail-caption" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                                <Label fx:id="detailCost" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                                <Label text="Создана" styleClass="detail-caption" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                                <Label fx:id="detailCreated" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+                                <Label text="Завершена" styleClass="detail-caption" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                                <Label fx:id="detailCompleted" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+                            </GridPane>
+
+                            <Label text="Описание неисправности" styleClass="detail-caption"/>
+                            <TextArea fx:id="detailDescription" editable="false" wrapText="true" minHeight="60" VBox.vgrow="ALWAYS"/>
+                        </VBox>
+                    </right>
+
+                    <bottom>
+                        <HBox styleClass="actions-bar" spacing="10" alignment="CENTER_LEFT">
+                            <padding>
+                                <Insets top="8" right="10" bottom="8" left="10"/>
+                            </padding>
+                            <Button text="Добавить" onAction="#onAddRequest" styleClass="btn-primary"/>
+                            <Button fx:id="editRequestButton" text="Изменить" onAction="#onEditRequest"/>
+                            <Button fx:id="deleteRequestButton" text="Удалить" onAction="#onDeleteRequest" styleClass="btn-danger"/>
+                            <Label fx:id="requestsStatusLabel" styleClass="muted"/>
+                        </HBox>
+                    </bottom>
+                </BorderPane>
+            </Tab>
+
+            <!-- ============ Клиенты ============ -->
+            <Tab text="Клиенты">
+                <BorderPane>
+                    <center>
+                        <SplitPane orientation="VERTICAL" dividerPositions="0.52">
+                            <TableView fx:id="clientsTable">
+                                <columns>
+                                    <TableColumn fx:id="colClientId" text="ID" prefWidth="42" styleClass="numeric-column"/>
+                                    <TableColumn fx:id="colClientName" text="ФИО" prefWidth="240"/>
+                                    <TableColumn fx:id="colClientPhone" text="Телефон" prefWidth="150"/>
+                                    <TableColumn fx:id="colClientEmail" text="Email" prefWidth="280"/>
+                                </columns>
+                            </TableView>
+                            <VBox spacing="6">
+                                <padding>
+                                    <Insets top="8" right="8" bottom="8" left="8"/>
+                                </padding>
+                                <Label fx:id="clientRequestsTitle" text="Заявки выбранного клиента" styleClass="section-title"/>
+                                <TableView fx:id="clientRequestsTable" VBox.vgrow="ALWAYS">
+                                    <columns>
+                                        <TableColumn fx:id="ccId" text="№" prefWidth="42" styleClass="numeric-column"/>
+                                        <TableColumn fx:id="ccDevice" text="Устройство" prefWidth="100"/>
+                                        <TableColumn fx:id="ccDescription" text="Описание неисправности" prefWidth="260"/>
+                                        <TableColumn fx:id="ccStatus" text="Статус" prefWidth="150"/>
+                                        <TableColumn fx:id="ccPriority" text="Приоритет" prefWidth="90"/>
+                                        <TableColumn fx:id="ccCost" text="Стоимость, ₽" prefWidth="115" styleClass="numeric-column"/>
+                                        <TableColumn fx:id="ccCreatedAt" text="Создана" prefWidth="148"/>
+                                    </columns>
+                                </TableView>
+                            </VBox>
+                        </SplitPane>
+                    </center>
+                    <bottom>
+                        <HBox styleClass="actions-bar" spacing="10" alignment="CENTER_LEFT">
+                            <padding>
+                                <Insets top="8" right="10" bottom="8" left="10"/>
+                            </padding>
+                            <Button text="Добавить" onAction="#onAddClient" styleClass="btn-primary"/>
+                            <Button fx:id="editClientButton" text="Изменить" onAction="#onEditClient"/>
+                            <Button fx:id="deleteClientButton" text="Удалить" onAction="#onDeleteClient" styleClass="btn-danger"/>
+                            <Button fx:id="resendEmailButton" text="Отправить письмо" onAction="#onResendEmail"/>
+                        </HBox>
+                    </bottom>
+                </BorderPane>
+            </Tab>
+
+            <!-- ============ Статистика ============ -->
+            <Tab fx:id="statsTab" text="Статистика">
+                <HBox spacing="28" styleClass="stats-pane">
+                    <padding>
+                        <Insets top="20" right="24" bottom="20" left="24"/>
+                    </padding>
+                    <VBox spacing="10" minWidth="360">
+                        <Label text="Основные показатели" styleClass="section-title"/>
+                        <GridPane fx:id="statsGrid" hgap="24" vgap="8"/>
+                    </VBox>
+                    <BarChart fx:id="statusChart" title="Заявки по статусам" legendVisible="false"
+                              animated="false" HBox.hgrow="ALWAYS">
+                        <xAxis>
+                            <CategoryAxis/>
+                        </xAxis>
+                        <yAxis>
+                            <NumberAxis minorTickVisible="false" tickUnit="1" forceZeroInRange="true"/>
+                        </yAxis>
+                    </BarChart>
+                </HBox>
+            </Tab>
+        </TabPane>
+    </center>
+
+    <bottom>
+        <HBox styleClass="status-bar" spacing="12" alignment="CENTER_LEFT">
+            <padding>
+                <Insets top="4" right="10" bottom="4" left="10"/>
+            </padding>
+            <Label fx:id="statusLabel" text="Готово" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+            <ProgressBar fx:id="busyBar" prefWidth="120" visible="false"/>
+        </HBox>
+    </bottom>
+</BorderPane>

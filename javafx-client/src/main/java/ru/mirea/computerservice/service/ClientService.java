@@ -4,13 +4,10 @@ import ru.mirea.computerservice.exception.BusinessException;
 import ru.mirea.computerservice.exception.EntityNotFoundException;
 import ru.mirea.computerservice.model.Client;
 import ru.mirea.computerservice.repository.ClientRepository;
+import ru.mirea.computerservice.util.EmailSender;
 
 import java.util.List;
 
-/**
- * Бизнес-логика клиентов. Контроллеры JavaFX вызывают ТОЛЬКО этот класс —
- * проверки здесь, а не в обработчиках кнопок.
- */
 public class ClientService {
 
     private final ClientRepository clientRepository;
@@ -27,7 +24,22 @@ public class ClientService {
         ensurePhoneFree(normalizedPhone, null);
         ensureEmailFree(normalizedEmail, null);
 
-        return clientRepository.save(new Client(name, normalizedPhone, normalizedEmail));
+        Client savedClient = clientRepository.save(new Client(name, normalizedPhone, normalizedEmail));
+
+        if (normalizedEmail != null) {
+            String confirmUrl = EmailVerificationServer.createConfirmationUrl(normalizedEmail);
+            Thread emailThread = new Thread(() -> {
+                try {
+                    EmailSender.sendConfirmationEmail(normalizedEmail, name, confirmUrl);
+                } catch (Exception e) {
+                    System.err.println("Не удалось отправить письмо: " + e.getMessage());
+                }
+            });
+            emailThread.setDaemon(true);
+            emailThread.start();
+        }
+
+        return savedClient;
     }
 
     public Client getById(int id) {
@@ -39,11 +51,6 @@ public class ClientService {
         return clientRepository.findAll();
     }
 
-    /**
-     * Принимает «сырые» значения из формы, а не готовый объект Client: сначала всё проверяется,
-     * и только потом изменяется сохранённая запись. Так объект, который отображается в таблице,
-     * не портится, если пользователь ввёл некорректные данные.
-     */
     public Client update(int id, String fullName, String phone, String email) {
         Client stored = getById(id);
 
@@ -61,15 +68,39 @@ public class ClientService {
         return stored;
     }
 
+    public void resendConfirmationEmail(int clientId) {
+        Client client = getById(clientId);
+
+        if (client.getEmail() == null || client.getEmail().isBlank()) {
+            throw new BusinessException("У клиента «" + client.getFullName() + "» не указан email.");
+        }
+        if (client.isEmailConfirmed()) {
+            throw new BusinessException("У клиента «" + client.getFullName() + "» почта уже подтверждена!");
+        }
+
+        String confirmUrl = EmailVerificationServer.createConfirmationUrl(client.getEmail());
+
+        Thread emailThread = new Thread(() -> {
+            try {
+                EmailSender.sendConfirmationEmail(client.getEmail(), client.getFullName(), confirmUrl);
+                System.out.println("Повторное письмо успешно отправлено на: " + client.getEmail());
+            } catch (Exception e) {
+                System.err.println("Ошибка при повторной отправке письма: " + e.getMessage());
+            }
+        });
+        emailThread.setDaemon(true);
+        emailThread.start();
+    }
+
     public void delete(int id) {
         Client client = getById(id);
         if (clientRepository.hasActiveRequests(id)) {
             throw new BusinessException("Нельзя удалить клиента «" + client.getFullName()
-                    + "»: у него есть незавершённые заявки. Сначала завершите или отмените их.");
+                    + "»: у него есть незавершённые заявки.");
         }
         if (clientRepository.hasAnyRequests(id)) {
             throw new BusinessException("Нельзя удалить клиента «" + client.getFullName()
-                    + "»: в системе сохранена история его заявок (завершённых и отменённых).");
+                    + "»: в системе сохранена история его заявок.");
         }
         clientRepository.delete(id);
     }
@@ -77,8 +108,6 @@ public class ClientService {
     public List<Client> searchByName(String query) {
         return clientRepository.searchByName(query);
     }
-
-    // ownId — id редактируемого клиента: его собственный телефон/email не считается «занятым»
 
     private void ensurePhoneFree(String phone, Integer ownId) {
         clientRepository.findByPhone(phone)
@@ -90,9 +119,7 @@ public class ClientService {
     }
 
     private void ensureEmailFree(String email, Integer ownId) {
-        if (email == null) {
-            return;
-        }
+        if (email == null) return;
         clientRepository.findByEmail(email)
                 .filter(other -> ownId == null || other.getId() != ownId)
                 .ifPresent(other -> {
